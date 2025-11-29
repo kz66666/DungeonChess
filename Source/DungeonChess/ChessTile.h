@@ -21,6 +21,9 @@ public:
     UMaterialInterface* NormalMaterial;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
+    UMaterialInterface* DarkMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
     UMaterialInterface* HighlightedMaterial;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Materials")
@@ -34,4 +37,8 @@ public:
 
     UPROPERTY()
     class AChessPieceBase* OccupyingPiece;
+
+private:
+    UPROPERTY()
+    UMaterialInterface* OriginalMaterial;
 };

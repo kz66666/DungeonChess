@@ -13,19 +13,27 @@ AChessTile::AChessTile()
     RootComponent = TileMesh;
 
     // Set up collision
-    TileMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    TileMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
+    TileMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    TileMesh->SetCollisionObjectType(ECC_WorldStatic);
+    TileMesh->SetCollisionResponseToAllChannels(ECR_Block);
     TileMesh->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 
     GridX = 0;
     GridY = 0;
     OccupyingPiece = nullptr;
+    OriginalMaterial = nullptr;
 }
 
 void AChessTile::Highlight(bool bIsAttackTile)
 {
     if (TileMesh)
     {
+        // Store original material if not already stored
+        if (!OriginalMaterial)
+        {
+            OriginalMaterial = TileMesh->GetMaterial(0);
+        }
+
         if (bIsAttackTile && AttackHighlightMaterial)
         {
             TileMesh->SetMaterial(0, AttackHighlightMaterial);
@@ -39,8 +47,8 @@ void AChessTile::Highlight(bool bIsAttackTile)
 
 void AChessTile::ResetHighlight()
 {
-    if (TileMesh && NormalMaterial)
+    if (TileMesh && OriginalMaterial)
     {
-        TileMesh->SetMaterial(0, NormalMaterial);
+        TileMesh->SetMaterial(0, OriginalMaterial);
     }
 }

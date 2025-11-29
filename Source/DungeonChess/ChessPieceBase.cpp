@@ -12,19 +12,20 @@ AChessPieceBase::AChessPieceBase()
 
     // Disable character movement
     GetCharacterMovement()->SetMovementMode(MOVE_None);
+    GetCharacterMovement()->GravityScale = 0.0f;
     GetCharacterMovement()->bOrientRotationToMovement = false;
 
     // Set up capsule collision
-    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
-    GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    GetCapsuleComponent()->SetCollisionObjectType(ECC_Pawn);
+    GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block);
 
     GridX = 0;
     GridY = 0;
     bHasActedThisTurn = false;
 
     Health = 100;
-    AttackPower = 10;
+    AttackPower = 25;
     MovementRange = 1;
     PieceType = EPieceType::PlayerPawn;
 }

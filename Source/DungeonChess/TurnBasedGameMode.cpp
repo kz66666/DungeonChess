@@ -19,6 +19,16 @@ void ATurnBasedGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
+    // Wait a frame for everything to initialize
+    FTimerHandle TimerHandle;
+    GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+        {
+            InitializeGame();
+        }, 0.1f, false);
+}
+
+void ATurnBasedGameMode::InitializeGame()
+{
     // Find the game board in the level
     TArray<AActor*> FoundActors;
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), AChessBoard::StaticClass(), FoundActors);
@@ -37,31 +47,50 @@ void ATurnBasedGameMode::BeginPlay()
         return;
     }
 
-    // Spawn player piece
-    FVector StartLocation = GameBoard->GetWorldLocationForTile(GameBoard->BoardWidth / 2, GameBoard->BoardHeight / 2);
-    FRotator StartRotation = FRotator::ZeroRotator;
-    FActorSpawnParameters SpawnParams;
-
-    PlayerPiece = GetWorld()->SpawnActor<APlayerChessPiece>(APlayerChessPiece::StaticClass(), StartLocation, StartRotation, SpawnParams);
-
-    if (PlayerPiece)
+    if (GEngine)
     {
-        PlayerPiece->GridX = GameBoard->BoardWidth / 2;
-        PlayerPiece->GridY = GameBoard->BoardHeight / 2;
+        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Chess Board Found!"));
+    }
 
-        AChessTile* StartTile = GameBoard->GetTileAt(PlayerPiece->GridX, PlayerPiece->GridY);
-        if (StartTile)
+    // Find the player pawn (should be spawned by default)
+    APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
+    if (PC)
+    {
+        PlayerPiece = Cast<APlayerChessPiece>(PC->GetPawn());
+
+        if (PlayerPiece)
         {
-            StartTile->OccupyingPiece = PlayerPiece;
+            // Position player at center of board
+            int32 StartX = GameBoard->BoardWidth / 2;
+            int32 StartY = GameBoard->BoardHeight / 2;
+
+            FVector StartLocation = GameBoard->GetWorldLocationForTile(StartX, StartY);
+            StartLocation.Z += 100.0f; // Raise above the board
+
+            PlayerPiece->SetActorLocation(StartLocation);
+            PlayerPiece->GridX = StartX;
+            PlayerPiece->GridY = StartY;
+
+            AChessTile* StartTile = GameBoard->GetTileAt(StartX, StartY);
+            if (StartTile)
+            {
+                StartTile->OccupyingPiece = PlayerPiece;
+            }
+
+            AllPieces.Add(PlayerPiece);
+
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green,
+                    FString::Printf(TEXT("Player spawned at (%d, %d)"), StartX, StartY));
+            }
         }
-
-        AllPieces.Add(PlayerPiece);
-
-        // Possess the player piece
-        APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-        if (PC)
+        else
         {
-            PC->Possess(PlayerPiece);
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("ERROR: Player pawn not found!"));
+            }
         }
     }
 

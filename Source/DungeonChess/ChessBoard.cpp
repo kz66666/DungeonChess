@@ -50,6 +50,23 @@ void AChessBoard::GenerateBoard()
             {
                 NewTile->GridX = X;
                 NewTile->GridY = Y;
+
+                // Determine if this is a light or dark tile (checkerboard pattern)
+                bool bIsLightTile = (X + Y) % 2 == 0;
+
+                // Set the appropriate material
+                if (NewTile->TileMesh)
+                {
+                    if (bIsLightTile && NewTile->NormalMaterial)
+                    {
+                        NewTile->TileMesh->SetMaterial(0, NewTile->NormalMaterial);
+                    }
+                    else if (!bIsLightTile && NewTile->DarkMaterial)
+                    {
+                        NewTile->TileMesh->SetMaterial(0, NewTile->DarkMaterial);
+                    }
+                }
+
                 Tiles.Add(NewTile);
             }
         }
