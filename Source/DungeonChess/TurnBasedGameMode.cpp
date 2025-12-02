@@ -92,7 +92,7 @@ void ATurnBasedGameMode::InitializeGame()
     }
 
     // Spawn enemies and power-ups
-    SpawnRandomEnemies(5);
+    SpawnRandomEnemies(3);
     SpawnRandomPowerUps(3);
 
     StartNextTurn();
