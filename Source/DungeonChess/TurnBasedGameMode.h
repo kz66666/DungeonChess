@@ -1,21 +1,23 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
+// TurnBasedGameMode.h
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "TurnBasedGameMode.generated.h"
 
-/**
- * 
- */
 UCLASS()
 class DUNGEONCHESS_API ATurnBasedGameMode : public AGameModeBase
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
     ATurnBasedGameMode();
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn Classes")
+    TSubclassOf<class AChessPieceBase> EnemyPieceClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn Classes")
+    TSubclassOf<class APowerUp> PowerUpClass;
 
     UPROPERTY()
     class AChessBoard* GameBoard;
@@ -32,8 +34,10 @@ public:
     UPROPERTY()
     bool bPlayerTurn = true;
 
+    // Called when player completes their action
+    void OnPlayerAction();
+
     void StartNextTurn();
-    void EndPlayerTurn();
     void ExecuteEnemyTurns();
 
     void SpawnRandomEnemies(int32 Count);
@@ -42,6 +46,11 @@ public:
 protected:
     virtual void BeginPlay() override;
 
-private: 
+private:
     void InitializeGame();
+
+    // Timer for enemy turn execution
+    FTimerHandle EnemyTurnTimerHandle;
+    void ProcessEnemyTurn();
+    int32 CurrentEnemyIndex = 0;
 };

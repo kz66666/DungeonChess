@@ -10,12 +10,13 @@ APlayerChessPiece::APlayerChessPiece()
     // Create camera boom
     USpringArmComponent* CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
-    CameraBoom->TargetArmLength = 1000.0f;
-    CameraBoom->SetRelativeRotation(FRotator(-60.0f, 0.0f, 0.0f));
+    CameraBoom->TargetArmLength = 2000.0f; // Further back
+    CameraBoom->SetRelativeRotation(FRotator(-70.0f, 0.0f, 0.0f)); // Steeper angle (more top-down)
     CameraBoom->bDoCollisionTest = false;
     CameraBoom->bInheritPitch = false;
     CameraBoom->bInheritRoll = false;
-    CameraBoom->bInheritYaw = false;
+    CameraBoom->bInheritYaw = false; // Don't rotate with character
+    CameraBoom->bUsePawnControlRotation = false;
 
     // Create camera
     UCameraComponent* FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -37,10 +38,10 @@ TArray<FIntPoint> APlayerChessPiece::GetValidMoves(AChessBoard* Board)
 
     // Player can move in all 8 directions (including diagonals) but not attack with movement
     TArray<FIntPoint> Directions = {
-        FIntPoint(1, 0), FIntPoint(-1, 0),
-        FIntPoint(0, 1), FIntPoint(0, -1),
-        FIntPoint(1, 1), FIntPoint(1, -1),
-        FIntPoint(-1, 1), FIntPoint(-1, -1)
+        FIntPoint(1, 0),   // Right
+        FIntPoint(-1, 0),  // Left
+        FIntPoint(0, 1),   // Forward
+        FIntPoint(0, -1)   // Back
     };
 
     for (const FIntPoint& Dir : Directions)

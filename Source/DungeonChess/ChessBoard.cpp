@@ -4,6 +4,7 @@
 #include "ChessBoard.h"
 #include "ChessTile.h"
 #include "Components/StaticMeshComponent.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 AChessBoard::AChessBoard()
@@ -22,7 +23,6 @@ void AChessBoard::BeginPlay()
 {
     Super::BeginPlay();
     GenerateBoard();
-	
 }
 
 void AChessBoard::GenerateBoard()
@@ -92,10 +92,21 @@ AChessTile* AChessBoard::GetTileAt(int32 X, int32 Y)
 FVector AChessBoard::GetWorldLocationForTile(int32 X, int32 Y)
 {
     FVector BoardOrigin = GetActorLocation();
-    float OffsetX = (X - BoardWidth / 2.0f) * TileSize;
-    float OffsetY = (Y - BoardHeight / 2.0f) * TileSize;
 
-    return BoardOrigin + FVector(OffsetX, OffsetY, 0.0f);
+    // For 8x8 board with TileSize 100:
+    // We want tile centers, not corners
+    // Tile [0,0] center should be at (-350, -350)
+    // Tile [4,4] center should be at (50, 50)
+    // Tile [7,7] center should be at (350, 350)
+
+    float HalfBoardWidth = (BoardWidth * TileSize) / 2.0f;
+    float HalfBoardHeight = (BoardHeight * TileSize) / 2.0f;
+
+    // Start at the center of the first tile
+    float PosX = (X * TileSize) + (TileSize / 2.0f) - HalfBoardWidth;
+    float PosY = (Y * TileSize) + (TileSize / 2.0f) - HalfBoardHeight;
+
+    return BoardOrigin + FVector(PosX, PosY, 0.0f);
 }
 
 bool AChessBoard::IsValidPosition(int32 X, int32 Y)
