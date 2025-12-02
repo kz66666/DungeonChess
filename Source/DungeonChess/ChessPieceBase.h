@@ -20,6 +20,26 @@ class DUNGEONCHESS_API AChessPieceBase : public ACharacter
 {
 	GENERATED_BODY()
 
+protected:
+    // Movement animation variables
+    UPROPERTY()
+    bool bIsMoving;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+    float MoveSpeed; // Units per second
+
+    UPROPERTY()
+    FVector StartLocation;
+
+    UPROPERTY()
+    FVector TargetLocation;
+
+    UPROPERTY()
+    float MoveAlpha;
+
+    // Called when smooth movement completes
+    virtual void OnMovementComplete();
+
 public:
     AChessPieceBase();
 
@@ -58,4 +78,7 @@ public:
 
     // Stealing power mechanic
     void StealPower(AChessPieceBase* Target);
+
+    // Override Tick function
+    virtual void Tick(float DeltaTime) override;
 };

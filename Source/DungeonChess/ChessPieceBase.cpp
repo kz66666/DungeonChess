@@ -8,7 +8,8 @@
 
 AChessPieceBase::AChessPieceBase()
 {
-    PrimaryActorTick.bCanEverTick = false;
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
 
     // Disable character movement
     GetCharacterMovement()->SetMovementMode(MOVE_None);
@@ -16,7 +17,7 @@ AChessPieceBase::AChessPieceBase()
     GetCharacterMovement()->bOrientRotationToMovement = false;
 
     // Set up capsule collision
-    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     GetCapsuleComponent()->SetCollisionObjectType(ECC_Pawn);
     GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Block);
 
@@ -29,11 +30,64 @@ AChessPieceBase::AChessPieceBase()
     MovementRange = 1;
     PieceType = EPieceType::PlayerPawn;
 
-    // In constructor
+    // Movement animation variables
+    bIsMoving = false;
+    MoveSpeed = 800.0f; // Units per second (increased for visibility)
+    MoveAlpha = 0.0f;
+
     PieceMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PieceMesh"));
-    RootComponent = PieceMesh; // if you want it as root
+    if (PieceMesh)
+    {
+        PieceMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
+    RootComponent = PieceMesh;
 
+}
 
+void AChessPieceBase::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    if (bIsMoving)
+    {
+        // Calculate interpolation progress
+        float Distance = FVector::Dist(StartLocation, TargetLocation);
+
+        if (Distance > 0.1f)
+        {
+            float MoveIncrement = (MoveSpeed * DeltaTime) / Distance;
+            MoveAlpha += MoveIncrement;
+
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White,
+                    FString::Printf(TEXT("Moving: Alpha=%.2f, DeltaTime=%.3f"), MoveAlpha, DeltaTime));
+            }
+
+            if (MoveAlpha >= 1.0f)
+            {
+                // Movement complete
+                MoveAlpha = 1.0f;
+                bIsMoving = false;
+                SetActorLocation(TargetLocation);
+                OnMovementComplete();
+            }
+            else
+            {
+                // Interpolate position (smooth ease in/out)
+                float EasedAlpha = FMath::InterpEaseInOut(0.0f, 1.0f, MoveAlpha, 2.0f);
+                FVector NewLocation = FMath::Lerp(StartLocation, TargetLocation, EasedAlpha);
+                SetActorLocation(NewLocation);
+            }
+        }
+        else
+        {
+            // Already at target
+            bIsMoving = false;
+            SetActorLocation(TargetLocation);
+            OnMovementComplete();
+        }
+    }
 }
 
 TArray<FIntPoint> AChessPieceBase::GetValidMoves(AChessBoard* Board)
@@ -112,6 +166,15 @@ void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Boa
         return;
     }
 
+    if (bIsMoving)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange, TEXT("Already moving!"));
+        }
+        return;
+    }
+
     // Get old and new tiles
     AChessTile* OldTile = Board->GetTileAt(GridX, GridY);
     AChessTile* NewTile = Board->GetTileAt(TargetX, TargetY);
@@ -133,20 +196,35 @@ void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Boa
     GridX = TargetX;
     GridY = TargetY;
 
-    // IMPORTANT: Use the tile's ACTUAL location, not recalculated position
-    FVector NewLocation = NewTile->GetActorLocation();
-    NewLocation.Z = 100.0f; // Set consistent height above board
-    SetActorLocation(NewLocation);
+    // Set up smooth movement
+    StartLocation = GetActorLocation();
+    TargetLocation = NewTile->GetActorLocation();
+    TargetLocation.Z = 100.0f; // Set consistent height above board
 
+    MoveAlpha = 0.0f;
+    bIsMoving = true;
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Cyan,
+            FString::Printf(TEXT("Starting move to (%d, %d) | From: (%.1f, %.1f, %.1f) To: (%.1f, %.1f, %.1f)"),
+                TargetX, TargetY,
+                StartLocation.X, StartLocation.Y, StartLocation.Z,
+                TargetLocation.X, TargetLocation.Y, TargetLocation.Z));
+    }
+}
+
+void AChessPieceBase::OnMovementComplete()
+{
     bHasActedThisTurn = true;
 
     if (GEngine)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan,
-            FString::Printf(TEXT("Moved to (%d, %d) at world pos (%.1f, %.1f)"),
-                TargetX, TargetY, NewLocation.X, NewLocation.Y));
+        GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green,
+            FString::Printf(TEXT("Arrived at (%d, %d)"), GridX, GridY));
     }
 }
+
 
 void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
 {

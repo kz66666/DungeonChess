@@ -8,6 +8,9 @@
 AKnightChessPiece::AKnightChessPiece()
 {
     PieceType = EPieceType::EnemyKnight;
+
+    // Make knight move slower than default (default is 800 in base class)
+    MoveSpeed = 400.0f;
 }
 
 TArray<FIntPoint> AKnightChessPiece::GetValidMoves(AChessBoard* Board)
@@ -46,4 +49,82 @@ TArray<FIntPoint> AKnightChessPiece::GetValidMoves(AChessBoard* Board)
 
     return ValidMoves;
 }
+
+void AKnightChessPiece::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    // Override movement behavior for knights only
+    if (bIsMoving)
+    {
+        float Distance = FVector::Dist(StartLocation, TargetLocation);
+
+        if (Distance > 0.1f)
+        {
+            float MoveIncrement = (MoveSpeed * DeltaTime) / Distance;
+            MoveAlpha += MoveIncrement;
+
+            if (MoveAlpha >= 1.0f)
+            {
+                MoveAlpha = 1.0f;
+                bIsMoving = false;
+                SetActorLocation(TargetLocation);
+                OnMovementComplete();
+            }
+            else
+            {
+                // Knight-specific L-shaped movement with hop
+                float EasedAlpha = FMath::InterpEaseInOut(0.0f, 1.0f, MoveAlpha, 2.0f);
+                FVector NewLocation = CalculateKnightMovementPath(EasedAlpha);
+                SetActorLocation(NewLocation);
+            }
+        }
+        else
+        {
+            bIsMoving = false;
+            SetActorLocation(TargetLocation);
+            OnMovementComplete();
+        }
+    }
+}
+
+FVector AKnightChessPiece::CalculateKnightMovementPath(float Alpha)
+{
+    // L-shaped movement: Move along one axis first, then the other
+    FVector DeltaMove = TargetLocation - StartLocation;
+    float AbsX = FMath::Abs(DeltaMove.X);
+    float AbsY = FMath::Abs(DeltaMove.Y);
+
+    FVector NewLocation;
+
+    // Determine which axis has more movement (the "2" in the L-shape)
+    if (AbsX > AbsY)
+    {
+        // Move X first (the longer part), then Y
+        float XProgress = FMath::Min(Alpha * 1.5f, 1.0f); // X completes at 66%
+        float YProgress = FMath::Max((Alpha - 0.5f) * 2.0f, 0.0f); // Y starts at 50%
+
+        NewLocation.X = FMath::Lerp(StartLocation.X, TargetLocation.X, XProgress);
+        NewLocation.Y = FMath::Lerp(StartLocation.Y, TargetLocation.Y, YProgress);
+    }
+    else
+    {
+        // Move Y first (the longer part), then X
+        float YProgress = FMath::Min(Alpha * 1.5f, 1.0f);
+        float XProgress = FMath::Max((Alpha - 0.5f) * 2.0f, 0.0f);
+
+        NewLocation.X = FMath::Lerp(StartLocation.X, TargetLocation.X, XProgress);
+        NewLocation.Y = FMath::Lerp(StartLocation.Y, TargetLocation.Y, YProgress);
+    }
+
+    NewLocation.Z = TargetLocation.Z;
+
+    // Add a hop/arc for the knight's jump
+    float HopHeight = 150.0f; // How high the knight jumps
+    float HopProgress = FMath::Sin(Alpha * PI); // Creates smooth arc
+    NewLocation.Z += HopProgress * HopHeight;
+
+    return NewLocation;
+}
+
 

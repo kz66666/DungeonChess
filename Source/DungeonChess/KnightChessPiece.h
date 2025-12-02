@@ -20,5 +20,11 @@ public:
 	// Override to implement rook-specific movement
 	virtual TArray<FIntPoint> GetValidMoves(class AChessBoard* Board) override;
 
-	
+	// Override tick to customize movement animation
+	virtual void Tick(float DeltaTime) override;
+
+protected:
+	// Calculate the L-shaped path for knight movement
+	FVector CalculateKnightMovementPath(float Alpha);
+
 };
