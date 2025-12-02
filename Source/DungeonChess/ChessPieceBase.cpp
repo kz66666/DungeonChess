@@ -127,12 +127,19 @@ void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Boa
     GridX = TargetX;
     GridY = TargetY;
 
-    // Move actor to new location
-    FVector NewLocation = Board->GetWorldLocationForTile(TargetX, TargetY);
-    NewLocation.Z = GetActorLocation().Z; // Maintain Z height
+    // IMPORTANT: Use the tile's ACTUAL location, not recalculated position
+    FVector NewLocation = NewTile->GetActorLocation();
+    NewLocation.Z = 100.0f; // Set consistent height above board
     SetActorLocation(NewLocation);
 
     bHasActedThisTurn = true;
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan,
+            FString::Printf(TEXT("Moved to (%d, %d) at world pos (%.1f, %.1f)"),
+                TargetX, TargetY, NewLocation.X, NewLocation.Y));
+    }
 }
 
 void AChessPieceBase::AttackPiece(AChessPieceBase* Target)

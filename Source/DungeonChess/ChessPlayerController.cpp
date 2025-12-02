@@ -179,6 +179,9 @@ void AChessPlayerController::OnMouseClick(const FInputActionValue& Value)
 
             ControlledPiece->AttackPiece(ClickedTile->OccupyingPiece);
             ClearHighlights();
+
+            // Trigger enemy turn automatically
+            GameMode->OnPlayerAction();
         }
         else if (!ClickedTile->OccupyingPiece && bShowingMoves)
         {
@@ -191,11 +194,13 @@ void AChessPlayerController::OnMouseClick(const FInputActionValue& Value)
 
             ControlledPiece->MoveToPiece(ClickedTile->GridX, ClickedTile->GridY, Board);
             ClearHighlights();
+
+            // Trigger enemy turn automatically
+            GameMode->OnPlayerAction();
         }
     }
     else
     {
-        // Clear highlights if clicking elsewhere
         ClearHighlights();
     }
 }
@@ -373,10 +378,16 @@ void AChessPlayerController::OnEndTurn(const FInputActionValue& Value)
 
         if (GEngine)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Yellow, TEXT("===== ENDING PLAYER TURN ====="));
+            GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Yellow, TEXT("===== ENDING TURN ====="));
         }
 
-        GameMode->EndPlayerTurn();
+        // Manually mark as acted to allow turn progression
+        if (ControlledPiece)
+        {
+            ControlledPiece->bHasActedThisTurn = true;
+        }
+
+        GameMode->OnPlayerAction();
     }
     else
     {

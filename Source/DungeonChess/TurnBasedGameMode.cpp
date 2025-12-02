@@ -8,6 +8,7 @@
 #include "ChessPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
+#include "TimerManager.h"
 
 ATurnBasedGameMode::ATurnBasedGameMode()
 {
@@ -52,7 +53,7 @@ void ATurnBasedGameMode::InitializeGame()
         GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green, TEXT("Chess Board Found!"));
     }
 
-    // Find the player pawn (should be spawned by default)
+    // Find the player pawn
     APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
     if (PC)
     {
@@ -65,7 +66,7 @@ void ATurnBasedGameMode::InitializeGame()
             int32 StartY = GameBoard->BoardHeight / 2;
 
             FVector StartLocation = GameBoard->GetWorldLocationForTile(StartX, StartY);
-            StartLocation.Z += 100.0f; // Raise above the board
+            StartLocation.Z = 100.0f;
 
             PlayerPiece->SetActorLocation(StartLocation);
             PlayerPiece->GridX = StartX;
@@ -85,13 +86,6 @@ void ATurnBasedGameMode::InitializeGame()
                     FString::Printf(TEXT("Player spawned at (%d, %d)"), StartX, StartY));
             }
         }
-        else
-        {
-            if (GEngine)
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("ERROR: Player pawn not found!"));
-            }
-        }
     }
 
     // Spawn enemies and power-ups
@@ -109,7 +103,7 @@ void ATurnBasedGameMode::StartNextTurn()
     if (GEngine)
     {
         GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan,
-            FString::Printf(TEXT("========== Turn %d - Player's Turn =========="), CurrentTurn));
+            FString::Printf(TEXT("===== TURN %d - Your Turn ====="), CurrentTurn));
     }
 
     // Reset all pieces
@@ -122,42 +116,58 @@ void ATurnBasedGameMode::StartNextTurn()
     }
 }
 
-void ATurnBasedGameMode::EndPlayerTurn()
+void ATurnBasedGameMode::OnPlayerAction()
 {
     if (!bPlayerTurn)
     {
         return;
     }
 
-    bPlayerTurn = false;
-
     if (GEngine)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Orange,
-            TEXT("Player ended turn. Enemy turn starting..."));
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow,
+            TEXT("Player action complete! Enemy turn starting..."));
     }
 
-    // Execute enemy turns
-    ExecuteEnemyTurns();
+    bPlayerTurn = false;
 
-    // Start next turn
-    StartNextTurn();
+    // Small delay before enemy turns start
+    FTimerHandle DelayTimer;
+    GetWorld()->GetTimerManager().SetTimer(DelayTimer, [this]()
+        {
+            ExecuteEnemyTurns();
+        }, 0.5f, false);
 }
 
 void ATurnBasedGameMode::ExecuteEnemyTurns()
 {
     if (!GameBoard || !PlayerPiece)
     {
+        StartNextTurn();
         return;
     }
 
-    for (AChessPieceBase* Enemy : AllPieces)
+    // Reset enemy index
+    CurrentEnemyIndex = 0;
+
+    // Start processing enemy turns one by one
+    ProcessEnemyTurn();
+}
+
+void ATurnBasedGameMode::ProcessEnemyTurn()
+{
+    // Find next valid enemy
+    while (CurrentEnemyIndex < AllPieces.Num())
     {
+        AChessPieceBase* Enemy = AllPieces[CurrentEnemyIndex];
+        CurrentEnemyIndex++;
+
         if (!Enemy || Enemy == PlayerPiece || Enemy->bHasActedThisTurn)
         {
             continue;
         }
 
+        // This is a valid enemy that hasn't acted
         // Simple AI: Move towards player or attack if adjacent
         TArray<FIntPoint> AttackTiles = Enemy->GetAttackTiles(GameBoard);
 
@@ -179,7 +189,7 @@ void ATurnBasedGameMode::ExecuteEnemyTurns()
             if (GEngine)
             {
                 GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-                    TEXT("Enemy attacked player!"));
+                    TEXT("Enemy attacked you!"));
             }
         }
         else
@@ -210,47 +220,116 @@ void ATurnBasedGameMode::ExecuteEnemyTurns()
                 Enemy->MoveToPiece(BestMove.X, BestMove.Y, GameBoard);
             }
         }
+
+        // Schedule next enemy turn after a delay
+        GetWorld()->GetTimerManager().SetTimer(
+            EnemyTurnTimerHandle,
+            this,
+            &ATurnBasedGameMode::ProcessEnemyTurn,
+            0.5f,  // 0.5 second delay between enemy actions
+            false
+        );
+
+        return; // Exit and wait for timer
     }
+
+    // All enemies have acted, start next player turn
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green,
+            TEXT("Enemy turn complete!"));
+    }
+
+    FTimerHandle DelayTimer;
+    GetWorld()->GetTimerManager().SetTimer(DelayTimer, [this]()
+        {
+            StartNextTurn();
+        }, 1.0f, false);
 }
 
 void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
 {
     if (!GameBoard)
     {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No GameBoard for enemy spawn!"));
+        }
         return;
     }
 
-    for (int32 i = 0; i < Count; i++)
+    if (!EnemyPieceClass)
     {
-        // Find random empty tile
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No EnemyPieceClass set in GameMode!"));
+        }
+        return;
+    }
+
+    int32 SpawnedCount = 0;
+    int32 Attempts = 0;
+    int32 MaxAttempts = Count * 10;
+
+    while (SpawnedCount < Count && Attempts < MaxAttempts)
+    {
+        Attempts++;
+
         int32 RandomX = FMath::RandRange(0, GameBoard->BoardWidth - 1);
         int32 RandomY = FMath::RandRange(0, GameBoard->BoardHeight - 1);
+
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue,
+			FString::Printf(TEXT("Trying to spawn enemy at (%d, %d)"), RandomX, RandomY));
+
+        // Skip if too close to player spawn
+        int32 CenterX = GameBoard->BoardWidth / 2;
+        int32 CenterY = GameBoard->BoardHeight / 2;
+        if (FMath::Abs(RandomX - CenterX) <= 1 && FMath::Abs(RandomY - CenterY) <= 1)
+        {
+            continue;
+        }
 
         AChessTile* Tile = GameBoard->GetTileAt(RandomX, RandomY);
 
         if (Tile && !Tile->OccupyingPiece)
         {
-            FVector SpawnLocation = GameBoard->GetWorldLocationForTile(RandomX, RandomY);
+            // Use the tile's actual location instead of recalculating
+            FVector SpawnLocation = Tile->GetActorLocation();
+            SpawnLocation.Z = 100.0f; // Same height as player
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 
-            AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(AChessPieceBase::StaticClass(), SpawnLocation, SpawnRotation, SpawnParams);
+            AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(
+                EnemyPieceClass,
+                SpawnLocation,
+                SpawnRotation,
+                SpawnParams
+            );
 
             if (Enemy)
             {
                 Enemy->GridX = RandomX;
                 Enemy->GridY = RandomY;
-                Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3)); // Random enemy type
+                Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3));
 
                 Tile->OccupyingPiece = Enemy;
                 AllPieces.Add(Enemy);
+                SpawnedCount++;
+
+                if (GEngine)
+                {
+                    GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange,
+                        FString::Printf(TEXT("Enemy %d spawned at grid (%d, %d), world (%.1f, %.1f)"),
+                            SpawnedCount, RandomX, RandomY, SpawnLocation.X, SpawnLocation.Y));
+                }
             }
         }
-        else
-        {
-            // Try again if tile was occupied
-            i--;
-        }
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow,
+            FString::Printf(TEXT("Spawned %d enemies"), SpawnedCount));
     }
 }
 
@@ -261,6 +340,17 @@ void ATurnBasedGameMode::SpawnRandomPowerUps(int32 Count)
         return;
     }
 
+    // Determine which class to spawn
+    TSubclassOf<APowerUp> ClassToSpawn;
+    if (PowerUpClass)
+    {
+        ClassToSpawn = PowerUpClass;
+    }
+    else
+    {
+        ClassToSpawn = APowerUp::StaticClass();
+    }
+
     for (int32 i = 0; i < Count; i++)
     {
         int32 RandomX = FMath::RandRange(0, GameBoard->BoardWidth - 1);
@@ -271,13 +361,12 @@ void ATurnBasedGameMode::SpawnRandomPowerUps(int32 Count)
         if (Tile && !Tile->OccupyingPiece)
         {
             FVector SpawnLocation = GameBoard->GetWorldLocationForTile(RandomX, RandomY);
-            SpawnLocation.Z += 50.0f; // Slightly above the board
+            SpawnLocation.Z = 50.0f;
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 
-            APowerUp* PowerUp = GetWorld()->SpawnActor<APowerUp>(APowerUp::StaticClass(), SpawnLocation, SpawnRotation, SpawnParams);
+            APowerUp* PowerUp = GetWorld()->SpawnActor<APowerUp>(ClassToSpawn, SpawnLocation, SpawnRotation, SpawnParams);
 
-            // Random power-up type
             if (PowerUp)
             {
                 PowerUp->PowerUpType = static_cast<EPowerUpType>(FMath::RandRange(0, 3));

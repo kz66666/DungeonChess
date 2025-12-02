@@ -15,10 +15,10 @@ public:
     AChessBoard();
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Board")
-    int32 BoardWidth = 16;
+    int32 BoardWidth = 12;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Board")
-    int32 BoardHeight = 16;
+    int32 BoardHeight = 12;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Board")
     float TileSize = 100.0f;
