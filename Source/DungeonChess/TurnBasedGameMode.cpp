@@ -5,6 +5,9 @@
 #include "PlayerChessPiece.h"
 #include "ChessTile.h"
 #include "PowerUp.h"
+#include "RookChessPiece.h"
+#include "KnightChessPiece.h"
+#include "BishopChessPiece.h"
 #include "ChessPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
@@ -258,14 +261,26 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
         return;
     }
 
-    if (!EnemyPieceClass)
+    /*if (!EnemyPieceClass)
     {
         if (GEngine)
         {
             GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No EnemyPieceClass set in GameMode!"));
         }
         return;
-    }
+    }*/
+
+    /*TArray<TSubclassOf<AChessPieceBase>> EnemyClasses = { ARookChessPiece::StaticClass(),
+                                                     AKnightChessPiece::StaticClass(),
+                                                     ABishopChessPiece::StaticClass() };*/
+
+    TArray<EPieceType> EnemyTypes = {
+        EPieceType::EnemyRook,
+        EPieceType::EnemyKnight,
+        EPieceType::EnemyBishop
+    };
+
+
 
     int32 SpawnedCount = 0;
     int32 Attempts = 0;
@@ -278,8 +293,8 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
         int32 RandomX = FMath::RandRange(0, GameBoard->BoardWidth - 1);
         int32 RandomY = FMath::RandRange(0, GameBoard->BoardHeight - 1);
 
-		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue,
-			FString::Printf(TEXT("Trying to spawn enemy at (%d, %d)"), RandomX, RandomY));
+		/*GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue,
+			FString::Printf(TEXT("Trying to spawn enemy at (%d, %d)"), RandomX, RandomY));*/
 
         // Skip if too close to player spawn
         int32 CenterX = GameBoard->BoardWidth / 2;
@@ -299,8 +314,20 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 
+            int32 Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 1);
+
+            /*GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange,
+                FString::Printf(TEXT("Trying to spawn class: %s"), *EnemyClasses[Index]->GetName()));
+
+            GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan,
+                FString::Printf(TEXT("Class %s is abstract? %s"),
+                    *EnemyClasses[Index]->GetName(),
+                    EnemyClasses[Index]->HasAnyClassFlags(CLASS_Abstract) ? TEXT("Yes") : TEXT("No")));*/
+
+
+
             AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(
-                EnemyPieceClass,
+                EnemyPieceClasses[Index],
                 SpawnLocation,
                 SpawnRotation,
                 SpawnParams
@@ -310,7 +337,8 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
             {
                 Enemy->GridX = RandomX;
                 Enemy->GridY = RandomY;
-                Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3));
+                /*Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3));*/
+                Enemy->PieceType = EnemyTypes[Index];
 
                 Tile->OccupyingPiece = Enemy;
                 AllPieces.Add(Enemy);
@@ -322,6 +350,10 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
                         FString::Printf(TEXT("Enemy %d spawned at grid (%d, %d), world (%.1f, %.1f)"),
                             SpawnedCount, RandomX, RandomY, SpawnLocation.X, SpawnLocation.Y));
                 }
+            }
+            else {
+                GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red,
+                    FString::Printf(TEXT("IT'S NOT AN ENEMY")));
             }
         }
     }

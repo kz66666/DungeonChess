@@ -39,6 +39,9 @@ public:
     int32 GridX;
     int32 GridY;
 
+    UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* PieceMesh;
+
     // Turn management
     UPROPERTY()
     bool bHasActedThisTurn = false;

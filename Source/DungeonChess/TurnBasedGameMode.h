@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ChessPieceBase.h"
 #include "GameFramework/GameModeBase.h"
 #include "TurnBasedGameMode.generated.h"
 
@@ -13,8 +14,11 @@ class DUNGEONCHESS_API ATurnBasedGameMode : public AGameModeBase
 public:
     ATurnBasedGameMode();
 
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn Classes")
+    TSubclassOf<class AChessPieceBase> EnemyPieceClass;*/
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn Classes")
-    TSubclassOf<class AChessPieceBase> EnemyPieceClass;
+    TArray<TSubclassOf<AChessPieceBase>> EnemyPieceClasses;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn Classes")
     TSubclassOf<class APowerUp> PowerUpClass;

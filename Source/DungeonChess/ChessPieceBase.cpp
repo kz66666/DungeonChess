@@ -28,6 +28,12 @@ AChessPieceBase::AChessPieceBase()
     AttackPower = 25;
     MovementRange = 1;
     PieceType = EPieceType::PlayerPawn;
+
+    // In constructor
+    PieceMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PieceMesh"));
+    RootComponent = PieceMesh; // if you want it as root
+
+
 }
 
 TArray<FIntPoint> AChessPieceBase::GetValidMoves(AChessBoard* Board)
