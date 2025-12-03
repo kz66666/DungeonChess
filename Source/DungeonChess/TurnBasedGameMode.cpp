@@ -126,7 +126,11 @@ void ATurnBasedGameMode::InitializeGame()
 
     // Spawn enemies and power-ups
     SpawnRandomEnemies(3);
+<<<<<<< HEAD
     SpawnRandomPowerUps(2);
+=======
+    SpawnRandomPowerUps(3);
+>>>>>>> a3097ce7a68d7a8d6169fa7488ff2ccc2e502a4e
 
     StartNextTurn();
 }
