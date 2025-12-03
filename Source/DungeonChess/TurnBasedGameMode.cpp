@@ -64,18 +64,50 @@ void ATurnBasedGameMode::InitializeGame()
 
         if (PlayerPiece)
         {
-            // Position player at center of board
-            int32 StartX = GameBoard->BoardWidth / 2;
-            int32 StartY = GameBoard->BoardHeight / 2;
+            // Determine spawn position
+            float StartX, StartY;
 
-            FVector StartLocation = GameBoard->GetWorldLocationForTile(StartX, StartY);
+            if (bRandomPlayerSpawn)
+            {
+                // Random spawn anywhere on the board (center of random tile)
+                StartX = FMath::RandRange(0, GameBoard->BoardWidth - 1) + 0.5f;
+                StartY = FMath::RandRange(0, GameBoard->BoardHeight - 1) + 0.5f;
+
+                if (GEngine)
+                {
+                    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan,
+                        FString::Printf(TEXT("Random spawn at (%.1f, %.1f)"), StartX, StartY));
+                }
+            }
+            else
+            {
+                // Use configured spawn position
+                StartX = PlayerStartX;
+                StartY = PlayerStartY;
+
+                // Clamp to valid board range
+                StartX = FMath::Clamp(StartX, 0.0f, static_cast<float>(GameBoard->BoardWidth) - 0.01f);
+                StartY = FMath::Clamp(StartY, 0.0f, static_cast<float>(GameBoard->BoardHeight) - 0.01f);
+
+                if (GEngine)
+                {
+                    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan,
+                        FString::Printf(TEXT("Fixed spawn at (%.1f, %.1f)"), StartX, StartY));
+                }
+            }
+
+            // Get world location using float precision
+            FVector StartLocation = GameBoard->GetWorldLocationForTileFloat(StartX, StartY);
             StartLocation.Z = 100.0f;
 
-            PlayerPiece->SetActorLocation(StartLocation);
-            PlayerPiece->GridX = StartX;
-            PlayerPiece->GridY = StartY;
+            PlayerPiece->SetActorLocation(StartLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
-            AChessTile* StartTile = GameBoard->GetTileAt(StartX, StartY);
+            // Store grid position (use floor for tile occupancy)
+            PlayerPiece->GridX = FMath::FloorToInt(StartX);
+            PlayerPiece->GridY = FMath::FloorToInt(StartY);
+
+            // Mark the tile as occupied
+            AChessTile* StartTile = GameBoard->GetTileAt(PlayerPiece->GridX, PlayerPiece->GridY);
             if (StartTile)
             {
                 StartTile->OccupyingPiece = PlayerPiece;
@@ -86,14 +118,15 @@ void ATurnBasedGameMode::InitializeGame()
             if (GEngine)
             {
                 GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green,
-                    FString::Printf(TEXT("Player spawned at (%d, %d)"), StartX, StartY));
+                    FString::Printf(TEXT("Player spawned at tile (%d, %d), precise pos (%.2f, %.2f)"),
+                        PlayerPiece->GridX, PlayerPiece->GridY, StartX, StartY));
             }
         }
     }
 
     // Spawn enemies and power-ups
-    SpawnRandomEnemies(5);
-    SpawnRandomPowerUps(3);
+    SpawnRandomEnemies(3);
+    SpawnRandomPowerUps(2);
 
     StartNextTurn();
 }
@@ -159,95 +192,115 @@ void ATurnBasedGameMode::ExecuteEnemyTurns()
 
 void ATurnBasedGameMode::ProcessEnemyTurn()
 {
-    // Find next valid enemy
-    while (CurrentEnemyIndex < AllPieces.Num())
+    if (!GameBoard || !PlayerPiece)
     {
-        AChessPieceBase* Enemy = AllPieces[CurrentEnemyIndex];
-        CurrentEnemyIndex++;
-
-        if (!Enemy || Enemy == PlayerPiece || Enemy->bHasActedThisTurn)
-        {
-            continue;
-        }
-
-        // This is a valid enemy that hasn't acted
-        // Simple AI: Move towards player or attack if adjacent
-        TArray<FIntPoint> AttackTiles = Enemy->GetAttackTiles(GameBoard);
-
-        // Check if player is in attack range
-        bool bCanAttackPlayer = false;
-        for (const FIntPoint& Tile : AttackTiles)
-        {
-            if (Tile.X == PlayerPiece->GridX && Tile.Y == PlayerPiece->GridY)
-            {
-                bCanAttackPlayer = true;
-                break;
-            }
-        }
-
-        if (bCanAttackPlayer)
-        {
-            // Attack player
-            Enemy->AttackPiece(PlayerPiece);
-            if (GEngine)
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-                    TEXT("Enemy attacked you!"));
-            }
-        }
-        else
-        {
-            // Move towards player
-            TArray<FIntPoint> ValidMoves = Enemy->GetValidMoves(GameBoard);
-
-            if (ValidMoves.Num() > 0)
-            {
-                // Find the move that gets closest to player
-                FIntPoint BestMove = ValidMoves[0];
-                float BestDistance = FLT_MAX;
-
-                for (const FIntPoint& Move : ValidMoves)
-                {
-                    float Distance = FVector2D::Distance(
-                        FVector2D(Move.X, Move.Y),
-                        FVector2D(PlayerPiece->GridX, PlayerPiece->GridY)
-                    );
-
-                    if (Distance < BestDistance)
-                    {
-                        BestDistance = Distance;
-                        BestMove = Move;
-                    }
-                }
-
-                Enemy->MoveToPiece(BestMove.X, BestMove.Y, GameBoard);
-            }
-        }
-
-        // Schedule next enemy turn after a delay
-        GetWorld()->GetTimerManager().SetTimer(
-            EnemyTurnTimerHandle,
-            this,
-            &ATurnBasedGameMode::ProcessEnemyTurn,
-            0.5f,  // 0.5 second delay between enemy actions
-            false
-        );
-
-        return; // Exit and wait for timer
+        StartNextTurn();
+        return;
     }
-
-    // All enemies have acted, start next player turn
-    if (GEngine)
+    
+    // Collect all valid enemies that haven't acted
+    TArray<AChessPieceBase*> ValidEnemies;
+    for (AChessPieceBase* Enemy : AllPieces)
     {
-        GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green,
-            TEXT("Enemy turn complete!"));
+        if (Enemy && Enemy != PlayerPiece && !Enemy->bHasActedThisTurn)
+        {
+            ValidEnemies.Add(Enemy);
+        }
     }
-
-    FTimerHandle DelayTimer;
-    GetWorld()->GetTimerManager().SetTimer(DelayTimer, [this]()
+    
+    // If no valid enemies, end enemy turn phase
+    if (ValidEnemies.Num() == 0)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Green,
+                TEXT("Enemy turn complete!"));
+        }
+        
+        FTimerHandle DelayTimer;
+        GetWorld()->GetTimerManager().SetTimer(DelayTimer, [this]()
         {
             StartNextTurn();
         }, 1.0f, false);
+        return;
+    }
+    
+    // Pick ONE random enemy to act this turn
+    int32 RandomIndex = FMath::RandRange(0, ValidEnemies.Num() - 1);
+    AChessPieceBase* Enemy = ValidEnemies[RandomIndex];
+    
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange,
+            FString::Printf(TEXT("Enemy at (%d,%d) is acting... (%d enemies remaining)"), 
+            Enemy->GridX, Enemy->GridY, ValidEnemies.Num()));
+    }
+    
+    // Simple AI: Move towards player or attack if adjacent
+    TArray<FIntPoint> AttackTiles = Enemy->GetAttackTiles(GameBoard);
+    
+    // Check if player is in attack range
+    bool bCanAttackPlayer = false;
+    for (const FIntPoint& Tile : AttackTiles)
+    {
+        if (Tile.X == PlayerPiece->GridX && Tile.Y == PlayerPiece->GridY)
+        {
+            bCanAttackPlayer = true;
+            break;
+        }
+    }
+    
+    if (bCanAttackPlayer)
+    {
+        // Attack player
+        Enemy->AttackPiece(PlayerPiece);
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
+                TEXT("Enemy attacked you!"));
+        }
+    }
+    else
+    {
+        // Move towards player
+        TArray<FIntPoint> ValidMoves = Enemy->GetValidMoves(GameBoard);
+        
+        if (ValidMoves.Num() > 0)
+        {
+            // Find the move that gets closest to player
+            FIntPoint BestMove = ValidMoves[0];
+            float BestDistance = FLT_MAX;
+            
+            for (const FIntPoint& Move : ValidMoves)
+            {
+                float Distance = FVector2D::Distance(
+                    FVector2D(Move.X, Move.Y),
+                    FVector2D(PlayerPiece->GridX, PlayerPiece->GridY)
+                );
+                
+                if (Distance < BestDistance)
+                {
+                    BestDistance = Distance;
+                    BestMove = Move;
+                }
+            }
+            
+            Enemy->MoveToPiece(BestMove.X, BestMove.Y, GameBoard);
+        }
+    }
+    
+    // ONE enemy has acted - immediately end enemy turn and start player turn
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow,
+            TEXT("One enemy acted. Your turn!"));
+    }
+    
+    FTimerHandle DelayTimer;
+    GetWorld()->GetTimerManager().SetTimer(DelayTimer, [this]()
+    {
+        StartNextTurn();
+    }, 0.5f, false);  // Short delay then player's turn
 }
 
 void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
@@ -309,8 +362,10 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
         if (Tile && !Tile->OccupyingPiece)
         {
             // Use the tile's actual location instead of recalculating
-            FVector SpawnLocation = Tile->GetActorLocation();
-            SpawnLocation.Z = 100.0f; // Same height as player
+            FVector SpawnLocation = Tile->GetActorLocation() +
+                FVector(GameBoard->TileSize / 4.0f, GameBoard->TileSize / 2.0f, 100.0f);
+            //FVector SpawnLocation = Tile->GetActorLocation();
+            //SpawnLocation.Z = 100.0f; 
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 
@@ -392,8 +447,10 @@ void ATurnBasedGameMode::SpawnRandomPowerUps(int32 Count)
 
         if (Tile && !Tile->OccupyingPiece)
         {
-            FVector SpawnLocation = GameBoard->GetWorldLocationForTile(RandomX, RandomY);
-            SpawnLocation.Z = 50.0f;
+            //FVector SpawnLocation = GameBoard->GetWorldLocationForTile(RandomX, RandomY);
+            //SpawnLocation.Z = 50.0f;
+            FVector SpawnLocation = GameBoard->GetWorldLocationForTile(RandomX, RandomY) +
+                FVector(GameBoard->TileSize / 4.0f, GameBoard->TileSize / 2.0f, 100.0f);
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 

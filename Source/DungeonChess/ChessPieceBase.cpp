@@ -198,8 +198,10 @@ void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Boa
 
     // Set up smooth movement
     StartLocation = GetActorLocation();
-    TargetLocation = NewTile->GetActorLocation();
-    TargetLocation.Z = 100.0f; // Set consistent height above board
+    //TargetLocation = NewTile->GetActorLocation();
+    FVector TileLocation = NewTile->GetActorLocation();
+    TargetLocation = TileLocation + FVector(25.0f, 50.0f, 100.0f);
+    //TargetLocation.Z = 100.0f; 
 
     MoveAlpha = 0.0f;
     bIsMoving = true;

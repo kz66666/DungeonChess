@@ -38,6 +38,12 @@ private:
 
 public:
     AChessTile* GetTileAt(int32 X, int32 Y);
+
     FVector GetWorldLocationForTile(int32 X, int32 Y);
+
+    FVector GetWorldLocationForTileFloat(float X, float Y);
+
     bool IsValidPosition(int32 X, int32 Y);
+
+    bool IsValidPositionFloat(float X, float Y);
 };

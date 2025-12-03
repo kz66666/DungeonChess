@@ -10,8 +10,8 @@ APlayerChessPiece::APlayerChessPiece()
     // Create camera boom
     USpringArmComponent* CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
     CameraBoom->SetupAttachment(RootComponent);
-    CameraBoom->TargetArmLength = 2000.0f; // Further back
-    CameraBoom->SetRelativeRotation(FRotator(-70.0f, 0.0f, 0.0f)); // Steeper angle (more top-down)
+    CameraBoom->TargetArmLength = 1000.0f; // Further back
+    CameraBoom->SetRelativeRotation(FRotator(-30.0f, 0.0f, 0.0f)); // Steeper angle (more top-down)
     CameraBoom->bDoCollisionTest = false;
     CameraBoom->bInheritPitch = false;
     CameraBoom->bInheritRoll = false;

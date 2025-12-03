@@ -23,6 +23,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawn Classes")
     TSubclassOf<class APowerUp> PowerUpClass;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Spawn")
+    bool bRandomPlayerSpawn = true;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Spawn", meta = (EditCondition = "!bRandomPlayerSpawn"))
+    float PlayerStartX = 4.5f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Player Spawn", meta = (EditCondition = "!bRandomPlayerSpawn"))
+    float PlayerStartY = 4.5f;
+
     UPROPERTY()
     class AChessBoard* GameBoard;
 

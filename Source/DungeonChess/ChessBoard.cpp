@@ -114,4 +114,24 @@ bool AChessBoard::IsValidPosition(int32 X, int32 Y)
     return X >= 0 && X < BoardWidth && Y >= 0 && Y < BoardHeight;
 }
 
+FVector AChessBoard::GetWorldLocationForTileFloat(float X, float Y)
+{
+    FVector BoardOrigin = GetActorLocation();
+
+    // Calculate the center offset
+    float HalfWidth = (BoardWidth * TileSize) * 0.5f;
+    float HalfHeight = (BoardHeight * TileSize) * 0.5f;
+
+    // Calculate tile position from center using float precision
+    float PosX = (X * TileSize) - HalfWidth;
+    float PosY = (Y * TileSize) - HalfHeight;
+
+    return BoardOrigin + FVector(PosX, PosY, 0.0f);
+}
+
+bool AChessBoard::IsValidPositionFloat(float X, float Y)
+{
+    return X >= 0.0f && X < static_cast<float>(BoardWidth) &&
+        Y >= 0.0f && Y < static_cast<float>(BoardHeight);
+}
 
