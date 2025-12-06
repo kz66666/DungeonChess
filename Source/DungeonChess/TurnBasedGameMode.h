@@ -66,4 +66,8 @@ private:
     FTimerHandle EnemyTurnTimerHandle;
     void ProcessEnemyTurn();
     int32 CurrentEnemyIndex = 0;
+
+    void HighlightEnemyAttackRange(class AChessPieceBase* Enemy);
+    void ClearEnemyHighlights();
+    TArray<class AChessTile*> HighlightedEnemyTiles;
 };

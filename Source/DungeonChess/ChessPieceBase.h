@@ -55,6 +55,15 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
     int32 MovementRange = 1;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    class USoundBase* MoveSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    class USoundBase* AttackSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+    class USoundBase* ClashSound; // Only for player
+
     // Current grid position
     int32 GridX;
     int32 GridY;
@@ -66,6 +75,15 @@ public:
     UPROPERTY()
     bool bHasActedThisTurn = false;
 
+    UPROPERTY(BlueprintReadWrite, Category = "PowerUp")
+    bool bSuperModeActive = false;
+
+    UPROPERTY(BlueprintReadWrite, Category = "PowerUp")
+    int32 SuperModeMovesRemaining = 0;
+
+    void ActivateSuperMode(int32 Moves);
+    void DeactivateSuperMode();
+
     // Virtual functions for different piece behaviors
     virtual TArray<FIntPoint> GetValidMoves(class AChessBoard* Board);
     virtual TArray<FIntPoint> GetAttackTiles(class AChessBoard* Board);
@@ -73,6 +91,7 @@ public:
     // Actions
     virtual void MoveToPiece(int32 TargetX, int32 TargetY, class AChessBoard* Board);
     virtual void AttackPiece(class AChessPieceBase* Target);
+    virtual void JumpAttackPiece(int32 TargetX, int32 TargetY, class AChessBoard* Board);
     virtual void OnTurnStart();
     virtual void OnTurnEnd();
 

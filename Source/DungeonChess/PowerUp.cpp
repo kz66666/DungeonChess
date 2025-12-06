@@ -2,7 +2,7 @@
 #include "PowerUp.h"
 #include "ChessPieceBase.h"
 #include "Components/StaticMeshComponent.h"
-#include "Components/SphereComponent.h"
+#include "Engine/Engine.h"
 
 APowerUp::APowerUp()
 {
@@ -12,13 +12,66 @@ APowerUp::APowerUp()
     PowerUpMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PowerUpMesh"));
     RootComponent = PowerUpMesh;
 
-    // Set up collision
+    // Set up collision for overlap
     PowerUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     PowerUpMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
     PowerUpMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    PowerUpMesh->SetGenerateOverlapEvents(true);
 
-    // Default power-up type
-    PowerUpType = EPowerUpType::HealthBoost;
+    // Bind overlap event
+    PowerUpMesh->OnComponentBeginOverlap.AddDynamic(this, &APowerUp::OnOverlapBegin);
+
+    // Default values
+    PowerUpType = EPowerUpType::ExtraMove;
+    SuperModeMovesCount = 5;
+}
+
+void APowerUp::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // Set mesh and material based on power-up type
+    switch (PowerUpType)
+    {
+    case EPowerUpType::ExtraMove:
+        if (ExtraMoveMesh)
+        {
+            PowerUpMesh->SetStaticMesh(ExtraMoveMesh);
+        }
+        if (ExtraMoveMaterial)
+        {
+            PowerUpMesh->SetMaterial(0, ExtraMoveMaterial);
+        }
+        break;
+
+    case EPowerUpType::SuperMode:
+        if (SuperModeMesh)
+        {
+            PowerUpMesh->SetStaticMesh(SuperModeMesh);
+        }
+        if (SuperModeMaterial)
+        {
+            PowerUpMesh->SetMaterial(0, SuperModeMaterial);
+        }
+        break;
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Cyan,
+            FString::Printf(TEXT("PowerUp spawned: %s"),
+                PowerUpType == EPowerUpType::ExtraMove ? TEXT("Extra Move") : TEXT("Super Mode")));
+    }
+}
+
+void APowerUp::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+    AChessPieceBase* Piece = Cast<AChessPieceBase>(OtherActor);
+    if (Piece)
+    {
+        OnPickup(Piece);
+    }
 }
 
 void APowerUp::OnPickup(AChessPieceBase* Piece)
@@ -28,48 +81,23 @@ void APowerUp::OnPickup(AChessPieceBase* Piece)
         return;
     }
 
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Magenta,
-            FString::Printf(TEXT("Power-up picked up: %s"), *UEnum::GetValueAsString(PowerUpType)));
-    }
-
     switch (PowerUpType)
     {
-    case EPowerUpType::HealthBoost:
-        Piece->Health += 50;
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green,
-                FString::Printf(TEXT("Health increased! New health: %d"), Piece->Health));
-        }
-        break;
-
-    case EPowerUpType::AttackBoost:
-        Piece->AttackPower += 10;
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-                FString::Printf(TEXT("Attack increased! New attack: %d"), Piece->AttackPower));
-        }
-        break;
-
     case EPowerUpType::ExtraMove:
         Piece->MovementRange += 1;
         if (GEngine)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Cyan,
-                FString::Printf(TEXT("Movement range increased! New range: %d"), Piece->MovementRange));
+            GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Cyan,
+                FString::Printf(TEXT("EXTRA MOVE! New range: %d"), Piece->MovementRange));
         }
         break;
 
-    case EPowerUpType::PowerSteal:
-        // Give the piece a temporary buff or special ability
-        Piece->AttackPower += 5;
+    case EPowerUpType::SuperMode:
+        Piece->ActivateSuperMode(SuperModeMovesCount);
         if (GEngine)
         {
-            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Purple,
-                TEXT("Power Steal ability activated!"));
+            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta,
+                TEXT("*** SUPER MODE ACTIVATED! ***\nEat enemies by moving into them!"));
         }
         break;
     }

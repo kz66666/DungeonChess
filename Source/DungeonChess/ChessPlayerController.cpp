@@ -129,18 +129,8 @@ void AChessPlayerController::OnMouseClick(const FInputActionValue& Value)
 
     if (!ClickedTile)
     {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Yellow, TEXT("Clicked outside board"));
-        }
         ClearHighlights();
         return;
-    }
-
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Cyan,
-            FString::Printf(TEXT("Clicked Tile: (%d, %d)"), ClickedTile->GridX, ClickedTile->GridY));
     }
 
     // Check if we clicked a highlighted tile
@@ -161,31 +151,53 @@ void AChessPlayerController::OnMouseClick(const FInputActionValue& Value)
         {
             if (GEngine)
             {
-                GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Orange, TEXT("Already acted this turn!"));
+                GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Orange, TEXT("Already acted!"));
             }
             return;
         }
 
         AChessBoard* Board = GameMode->GameBoard;
 
-        if (ClickedTile->OccupyingPiece && bShowingAttacks)
+        // Super mode - eating enemies by moving into them
+        if (ControlledPiece->bSuperModeActive && ClickedTile->OccupyingPiece && bShowingMoves)
         {
-            // Attack action
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Magenta,
+                    FString::Printf(TEXT("EATING ENEMY! %d moves left"),
+                        ControlledPiece->SuperModeMovesRemaining - 1));
+            }
+
+            // Jump attack to eat the enemy
+            ControlledPiece->JumpAttackPiece(ClickedTile->GridX, ClickedTile->GridY, Board);
+
+            // Decrease super mode counter
+            ControlledPiece->SuperModeMovesRemaining--;
+            if (ControlledPiece->SuperModeMovesRemaining <= 0)
+            {
+                ControlledPiece->DeactivateSuperMode();
+            }
+
+            ClearHighlights();
+            GameMode->OnPlayerAction();
+        }
+        // Normal attack (diagonal clash)
+        else if (ClickedTile->OccupyingPiece && bShowingAttacks)
+        {
             if (GEngine)
             {
                 GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-                    FString::Printf(TEXT("Attacking enemy at (%d, %d)!"), ClickedTile->GridX, ClickedTile->GridY));
+                    FString::Printf(TEXT("Clashing with enemy at (%d, %d)!"),
+                        ClickedTile->GridX, ClickedTile->GridY));
             }
 
             ControlledPiece->AttackPiece(ClickedTile->OccupyingPiece);
             ClearHighlights();
-
-            // Trigger enemy turn automatically
             GameMode->OnPlayerAction();
         }
+        // Normal movement
         else if (!ClickedTile->OccupyingPiece && bShowingMoves)
         {
-            // Move action
             if (GEngine)
             {
                 GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green,
@@ -194,8 +206,6 @@ void AChessPlayerController::OnMouseClick(const FInputActionValue& Value)
 
             ControlledPiece->MoveToPiece(ClickedTile->GridX, ClickedTile->GridY, Board);
             ClearHighlights();
-
-            // Trigger enemy turn automatically
             GameMode->OnPlayerAction();
         }
     }

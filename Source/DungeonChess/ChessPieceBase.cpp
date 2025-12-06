@@ -5,6 +5,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 
 AChessPieceBase::AChessPieceBase()
 {
@@ -135,11 +136,31 @@ TArray<FIntPoint> AChessPieceBase::GetAttackTiles(AChessBoard* Board)
 {
     TArray<FIntPoint> AttackTiles;
 
-    // Base implementation: can attack adjacent tiles
-    TArray<FIntPoint> Directions = {
-        FIntPoint(1, 0), FIntPoint(-1, 0),
-        FIntPoint(0, 1), FIntPoint(0, -1)
-    };
+    if (!Board)
+    {
+        return AttackTiles;
+    }
+
+    // Choose directions based on super mode
+    TArray<FIntPoint> Directions;
+    if (bSuperModeActive)
+    {
+        // All 8 directions in super mode
+        Directions = {
+            FIntPoint(1, 0), FIntPoint(-1, 0),
+            FIntPoint(0, 1), FIntPoint(0, -1),
+            FIntPoint(1, 1), FIntPoint(1, -1),
+            FIntPoint(-1, 1), FIntPoint(-1, -1)
+        };
+    }
+    else
+    {
+        // Normal - only 4 cardinal directions
+        Directions = {
+            FIntPoint(1, 0), FIntPoint(-1, 0),
+            FIntPoint(0, 1), FIntPoint(0, -1)
+        };
+    }
 
     for (const FIntPoint& Dir : Directions)
     {
@@ -206,6 +227,11 @@ void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Boa
     MoveAlpha = 0.0f;
     bIsMoving = true;
 
+    if (MoveSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, MoveSound, StartLocation);
+    }
+
     if (GEngine)
     {
         GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Cyan,
@@ -227,12 +253,39 @@ void AChessPieceBase::OnMovementComplete()
     }
 }
 
+void AChessPieceBase::ActivateSuperMode(int32 Moves)
+{
+    bSuperModeActive = true;
+    SuperModeMovesRemaining = Moves;
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Magenta,
+            FString::Printf(TEXT("*** SUPER MODE! %d moves ***"), Moves));
+    }
+}
+
+void AChessPieceBase::DeactivateSuperMode()
+{
+    bSuperModeActive = false;
+    SuperModeMovesRemaining = 0;
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::White, TEXT("Super Mode ended"));
+    }
+}
 
 void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
 {
     if (!Target)
     {
         return;
+    }
+
+    if (ClashSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, ClashSound, GetActorLocation());
     }
 
     // Deal damage
@@ -278,6 +331,60 @@ void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
         Target->Destroy();
     }
 
+    bHasActedThisTurn = true;
+}
+
+void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard* Board)
+{
+    if (!Board || bIsMoving)
+    {
+        return;
+    }
+
+    AChessTile* TargetTile = Board->GetTileAt(TargetX, TargetY);
+    if (!TargetTile || !TargetTile->OccupyingPiece)
+    {
+        return;
+    }
+
+    AChessPieceBase* Target = TargetTile->OccupyingPiece;
+
+    // Play attack sound
+    if (AttackSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, AttackSound, GetActorLocation());
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
+            FString::Printf(TEXT("Captured %s!"), *Target->GetName()));
+    }
+
+    // Get old tile
+    AChessTile* OldTile = Board->GetTileAt(GridX, GridY);
+    if (OldTile)
+    {
+        OldTile->OccupyingPiece = nullptr;
+    }
+
+    // Steal power and destroy target
+    StealPower(Target);
+    Target->Destroy();
+
+    // Update grid position
+    GridX = TargetX;
+    GridY = TargetY;
+
+    // Start smooth movement to target position
+    StartLocation = GetActorLocation();
+    FVector TileLocation = TargetTile->GetActorLocation();
+    TargetLocation = TileLocation + FVector(25.0f, 50.0f, 100.0f);
+
+    MoveAlpha = 0.0f;
+    bIsMoving = true;
+
+    TargetTile->OccupyingPiece = this;
     bHasActedThisTurn = true;
 }
 

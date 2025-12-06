@@ -36,7 +36,7 @@ TArray<FIntPoint> APlayerChessPiece::GetValidMoves(AChessBoard* Board)
         return ValidMoves;
     }
 
-    // Player can move in all 8 directions (including diagonals) but not attack with movement
+    // Player can move in cardinal directions
     TArray<FIntPoint> Directions = {
         FIntPoint(1, 0),   // Right
         FIntPoint(-1, 0),  // Left
@@ -52,9 +52,18 @@ TArray<FIntPoint> APlayerChessPiece::GetValidMoves(AChessBoard* Board)
         if (Board->IsValidPosition(CheckX, CheckY))
         {
             AChessTile* Tile = Board->GetTileAt(CheckX, CheckY);
-            if (Tile && !Tile->OccupyingPiece)
+            if (Tile)
             {
-                ValidMoves.Add(FIntPoint(CheckX, CheckY));
+                // In super mode, can move to tiles with enemies (eat them)
+                if (bSuperModeActive && Tile->OccupyingPiece)
+                {
+                    ValidMoves.Add(FIntPoint(CheckX, CheckY));
+                }
+                // Normal mode - only empty tiles
+                else if (!Tile->OccupyingPiece)
+                {
+                    ValidMoves.Add(FIntPoint(CheckX, CheckY));
+                }
             }
         }
     }
