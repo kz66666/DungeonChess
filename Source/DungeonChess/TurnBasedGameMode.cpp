@@ -417,11 +417,9 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
 
         if (Tile && !Tile->OccupyingPiece)
         {
-            // Use the tile's actual location instead of recalculating
-            FVector SpawnLocation = Tile->GetActorLocation() +
-                FVector(GameBoard->TileSize / 4.0f, GameBoard->TileSize / 2.0f, 100.0f);
-            //FVector SpawnLocation = Tile->GetActorLocation();
-            //SpawnLocation.Z = 100.0f; 
+            // Use the tile's actual location (tiles are already centered)
+            FVector SpawnLocation = Tile->GetActorLocation();
+            SpawnLocation.Z = 100.0f; 
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 

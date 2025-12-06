@@ -123,8 +123,9 @@ FVector AChessBoard::GetWorldLocationForTileFloat(float X, float Y)
     float HalfHeight = (BoardHeight * TileSize) * 0.5f;
 
     // Calculate tile position from center using float precision
-    float PosX = (X * TileSize) - HalfWidth;
-    float PosY = (Y * TileSize) - HalfHeight;
+    // Add TileSize / 2.0f to center on the tile (consistent with GetWorldLocationForTile)
+    float PosX = (X * TileSize) + (TileSize / 2.0f) - HalfWidth;
+    float PosY = (Y * TileSize) + (TileSize / 2.0f) - HalfHeight;
 
     return BoardOrigin + FVector(PosX, PosY, 0.0f);
 }

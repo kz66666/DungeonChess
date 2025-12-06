@@ -19,4 +19,11 @@ public:
 
     // Player can attack diagonals
     bool CanAttackDiagonal(int32 TargetX, int32 TargetY);
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
+    class USpringArmComponent* CameraBoom;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
+    class UCameraComponent* FollowCamera;
+
 };
