@@ -17,7 +17,12 @@ class DUNGEONCHESS_API ABishopChessPiece : public AChessPieceBase
 public:
 	ABishopChessPiece();
 
-	// Override to implement rook-specific movement
+	// Override to implement bishop-specific movement
 	virtual TArray<FIntPoint> GetValidMoves(class AChessBoard* Board) override;
 	
+	// Override to implement bishop-specific attack range (same as movement)
+	virtual TArray<FIntPoint> GetAttackTiles(class AChessBoard* Board) override;
+	
+	// Override to show full attack range (entire diagonals)
+	virtual TArray<FIntPoint> GetAttackRangeTiles(class AChessBoard* Board) override;
 };

@@ -17,8 +17,14 @@ class DUNGEONCHESS_API AKnightChessPiece : public AChessPieceBase
 public:
 	AKnightChessPiece();
 
-	// Override to implement rook-specific movement
+	// Override to implement knight-specific movement
 	virtual TArray<FIntPoint> GetValidMoves(class AChessBoard* Board) override;
+
+	// Override to implement knight-specific attack range (same as movement - L-shapes)
+	virtual TArray<FIntPoint> GetAttackTiles(class AChessBoard* Board) override;
+	
+	// Override to show full attack range (all L-shaped positions)
+	virtual TArray<FIntPoint> GetAttackRangeTiles(class AChessBoard* Board) override;
 
 	// Override tick to customize movement animation
 	virtual void Tick(float DeltaTime) override;

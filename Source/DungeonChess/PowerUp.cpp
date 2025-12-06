@@ -12,10 +12,12 @@ APowerUp::APowerUp()
     PowerUpMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PowerUpMesh"));
     RootComponent = PowerUpMesh;
 
-    // Set up collision for overlap
+    // Set up collision for overlap - use WorldDynamic so it can be found by queries
     PowerUpMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    PowerUpMesh->SetCollisionObjectType(ECC_WorldDynamic);
     PowerUpMesh->SetCollisionResponseToAllChannels(ECR_Ignore);
     PowerUpMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
+    PowerUpMesh->SetCollisionResponseToChannel(ECC_WorldDynamic, ECR_Overlap);
     PowerUpMesh->SetGenerateOverlapEvents(true);
 
     // Bind overlap event
@@ -84,11 +86,12 @@ void APowerUp::OnPickup(AChessPieceBase* Piece)
     switch (PowerUpType)
     {
     case EPowerUpType::ExtraMove:
-        Piece->MovementRange += 1;
+        // Give the player an additional action this turn
+        Piece->bHasActedThisTurn = false;
         if (GEngine)
         {
             GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Cyan,
-                FString::Printf(TEXT("EXTRA MOVE! New range: %d"), Piece->MovementRange));
+                TEXT("EXTRA MOVE! You can act again this turn!"));
         }
         break;
 

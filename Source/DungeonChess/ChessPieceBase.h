@@ -87,6 +87,9 @@ public:
     // Virtual functions for different piece behaviors
     virtual TArray<FIntPoint> GetValidMoves(class AChessBoard* Board);
     virtual TArray<FIntPoint> GetAttackTiles(class AChessBoard* Board);
+    
+    // Get all tiles in attack range (for highlighting - includes empty tiles)
+    virtual TArray<FIntPoint> GetAttackRangeTiles(class AChessBoard* Board);
 
     // Actions
     virtual void MoveToPiece(int32 TargetX, int32 TargetY, class AChessBoard* Board);
@@ -97,6 +100,9 @@ public:
 
     // Stealing power mechanic
     void StealPower(AChessPieceBase* Target);
+
+    // Helper function to check if a piece is an ally (same team)
+    bool IsAlly(AChessPieceBase* OtherPiece) const;
 
     // Override Tick function
     virtual void Tick(float DeltaTime) override;

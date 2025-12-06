@@ -1,11 +1,16 @@
 #include "ChessPieceBase.h"
 #include "ChessBoard.h"
 #include "ChessTile.h"
+#include "PowerUp.h"
+#include "TurnBasedGameMode.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/Engine.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundBase.h"
+#include "Engine/World.h"
+#include "CollisionQueryParams.h"
+#include "Engine/OverlapResult.h"
 
 AChessPieceBase::AChessPieceBase()
 {
@@ -172,12 +177,23 @@ TArray<FIntPoint> AChessPieceBase::GetAttackTiles(AChessBoard* Board)
             AChessTile* Tile = Board->GetTileAt(CheckX, CheckY);
             if (Tile && Tile->OccupyingPiece && Tile->OccupyingPiece != this)
             {
-                AttackTiles.Add(FIntPoint(CheckX, CheckY));
+                // Only attack enemies, not allies
+                if (!IsAlly(Tile->OccupyingPiece))
+                {
+                    AttackTiles.Add(FIntPoint(CheckX, CheckY));
+                }
             }
         }
     }
 
     return AttackTiles;
+}
+
+TArray<FIntPoint> AChessPieceBase::GetAttackRangeTiles(AChessBoard* Board)
+{
+    // Default implementation: return attack tiles (occupied only)
+    // Override in subclasses to show full range
+    return GetAttackTiles(Board);
 }
 
 void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Board)
@@ -213,16 +229,69 @@ void AChessPieceBase::MoveToPiece(int32 TargetX, int32 TargetY, AChessBoard* Boa
 
     NewTile->OccupyingPiece = this;
 
+    // Check for power-ups on the target tile and collect them
+    // Use multiple methods to ensure we find power-ups
+    FVector TileLocation = NewTile->GetActorLocation();
+    
+    // Method 1: Overlap query by object type
+    TArray<FOverlapResult> OverlapResults;
+    FCollisionQueryParams QueryParams;
+    QueryParams.AddIgnoredActor(this);
+    QueryParams.AddIgnoredActor(NewTile);
+    GetWorld()->OverlapMultiByObjectType(
+        OverlapResults,
+        TileLocation,
+        FQuat::Identity,
+        FCollisionObjectQueryParams(ECC_WorldDynamic),
+        FCollisionShape::MakeSphere(100.0f), // Larger sphere to catch power-ups
+        QueryParams
+    );
+    
+    // Method 2: Also search by class directly (more reliable)
+    TArray<AActor*> FoundPowerUps;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APowerUp::StaticClass(), FoundPowerUps);
+    
+    // Check both overlap results and found actors
+    for (const FOverlapResult& Result : OverlapResults)
+    {
+        APowerUp* PowerUp = Cast<APowerUp>(Result.GetActor());
+        if (PowerUp && IsValid(PowerUp))
+        {
+            float Distance = FVector::Dist(TileLocation, PowerUp->GetActorLocation());
+            if (Distance < 100.0f) // Within range
+            {
+                PowerUp->OnPickup(this);
+                break; // Only collect one power-up per move
+            }
+        }
+    }
+    
+    // If not found via overlap, check by distance from found actors
+    if (OverlapResults.Num() == 0 || !Cast<APowerUp>(OverlapResults[0].GetActor()))
+    {
+        for (AActor* Actor : FoundPowerUps)
+        {
+            APowerUp* PowerUp = Cast<APowerUp>(Actor);
+            if (PowerUp && IsValid(PowerUp))
+            {
+                float Distance = FVector::Dist(TileLocation, PowerUp->GetActorLocation());
+                if (Distance < 100.0f) // Within range
+                {
+                    PowerUp->OnPickup(this);
+                    break; // Only collect one power-up per move
+                }
+            }
+        }
+    }
+
     // Update grid position
     GridX = TargetX;
     GridY = TargetY;
 
     // Set up smooth movement
     StartLocation = GetActorLocation();
-    //TargetLocation = NewTile->GetActorLocation();
-    FVector TileLocation = NewTile->GetActorLocation();
-    TargetLocation = TileLocation + FVector(25.0f, 50.0f, 100.0f);
-    //TargetLocation.Z = 100.0f; 
+    // Reuse TileLocation from power-up check above
+    TargetLocation = TileLocation + FVector(25.0f, 50.0f, 0.0f); // No Z offset - pieces sit on the board 
 
     MoveAlpha = 0.0f;
     bIsMoving = true;
@@ -328,6 +397,16 @@ void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
             }
         }
 
+        // Notify game mode to refresh highlights and remove from list when enemy dies
+        ATurnBasedGameMode* GameMode = Cast<ATurnBasedGameMode>(GetWorld()->GetAuthGameMode());
+        if (GameMode && Target != this && Target->PieceType != EPieceType::PlayerPawn)
+        {
+            // Remove enemy from AllPieces array
+            GameMode->AllPieces.Remove(Target);
+            // Enemy is being destroyed - refresh highlights
+            GameMode->RefreshEnemyHighlights();
+        }
+
         Target->Destroy();
     }
 
@@ -348,6 +427,17 @@ void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard*
     }
 
     AChessPieceBase* Target = TargetTile->OccupyingPiece;
+
+    // Don't attack allies
+    if (IsAlly(Target))
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Orange,
+                TEXT("Cannot attack ally!"));
+        }
+        return;
+    }
 
     // Play attack sound
     if (AttackSound)
@@ -370,6 +460,17 @@ void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard*
 
     // Steal power and destroy target
     StealPower(Target);
+    
+    // Notify game mode to refresh highlights and remove from list when enemy dies
+    ATurnBasedGameMode* GameMode = Cast<ATurnBasedGameMode>(GetWorld()->GetAuthGameMode());
+    if (GameMode && Target != this && Target->PieceType != EPieceType::PlayerPawn)
+    {
+        // Remove enemy from AllPieces array
+        GameMode->AllPieces.Remove(Target);
+        // Enemy is being destroyed - refresh highlights
+        GameMode->RefreshEnemyHighlights();
+    }
+    
     Target->Destroy();
 
     // Update grid position
@@ -379,7 +480,7 @@ void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard*
     // Start smooth movement to target position
     StartLocation = GetActorLocation();
     FVector TileLocation = TargetTile->GetActorLocation();
-    TargetLocation = TileLocation + FVector(25.0f, 50.0f, 100.0f);
+    TargetLocation = TileLocation + FVector(25.0f, 50.0f, 0.0f); // No Z offset - pieces sit on the board
 
     MoveAlpha = 0.0f;
     bIsMoving = true;
@@ -405,6 +506,21 @@ void AChessPieceBase::StealPower(AChessPieceBase* Target)
             FString::Printf(TEXT("%s stole %d power! New attack: %d"),
                 *GetName(), StolenPower, AttackPower));
     }
+}
+
+bool AChessPieceBase::IsAlly(AChessPieceBase* OtherPiece) const
+{
+    if (!OtherPiece)
+    {
+        return false;
+    }
+
+    // Player pieces are allies to each other, enemy pieces are allies to each other
+    bool bThisIsPlayer = (PieceType == EPieceType::PlayerPawn);
+    bool bOtherIsPlayer = (OtherPiece->PieceType == EPieceType::PlayerPawn);
+
+    // They are allies if they are both players or both enemies
+    return (bThisIsPlayer && bOtherIsPlayer) || (!bThisIsPlayer && !bOtherIsPlayer);
 }
 
 void AChessPieceBase::OnTurnStart()

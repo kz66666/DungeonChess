@@ -50,6 +50,81 @@ TArray<FIntPoint> AKnightChessPiece::GetValidMoves(AChessBoard* Board)
     return ValidMoves;
 }
 
+TArray<FIntPoint> AKnightChessPiece::GetAttackTiles(AChessBoard* Board)
+{
+    TArray<FIntPoint> AttackTiles;
+
+    if (!Board)
+    {
+        return AttackTiles;
+    }
+
+    // Knight attacks in L-shapes (same as movement)
+    TArray<FIntPoint> Moves = {
+        FIntPoint(2,  1),
+        FIntPoint(1,  2),
+        FIntPoint(-1,  2),
+        FIntPoint(-2,  1),
+        FIntPoint(-2, -1),
+        FIntPoint(-1, -2),
+        FIntPoint(1, -2),
+        FIntPoint(2, -1)
+    };
+
+    for (const FIntPoint& Move : Moves)
+    {
+        int32 CheckX = GridX + Move.X;
+        int32 CheckY = GridY + Move.Y;
+
+        if (!Board->IsValidPosition(CheckX, CheckY))
+            continue;
+
+        AChessTile* Tile = Board->GetTileAt(CheckX, CheckY);
+        if (Tile && Tile->OccupyingPiece && !IsAlly(Tile->OccupyingPiece))
+        {
+            AttackTiles.Add(FIntPoint(CheckX, CheckY));
+        }
+    }
+
+    return AttackTiles;
+}
+
+TArray<FIntPoint> AKnightChessPiece::GetAttackRangeTiles(AChessBoard* Board)
+{
+    TArray<FIntPoint> RangeTiles;
+
+    if (!Board)
+    {
+        return RangeTiles;
+    }
+
+    // Knight can attack all L-shaped positions (all tiles, not just occupied ones)
+    TArray<FIntPoint> Moves = {
+        FIntPoint(2,  1),
+        FIntPoint(1,  2),
+        FIntPoint(-1,  2),
+        FIntPoint(-2,  1),
+        FIntPoint(-2, -1),
+        FIntPoint(-1, -2),
+        FIntPoint(1, -2),
+        FIntPoint(2, -1)
+    };
+
+    for (const FIntPoint& Move : Moves)
+    {
+        int32 CheckX = GridX + Move.X;
+        int32 CheckY = GridY + Move.Y;
+
+        if (Board->IsValidPosition(CheckX, CheckY))
+        {
+            // Add all valid L-shaped positions (knight can jump, so no blocking check needed)
+            RangeTiles.Add(FIntPoint(CheckX, CheckY));
+        }
+    }
+
+    return RangeTiles;
+}
+
 void AKnightChessPiece::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);

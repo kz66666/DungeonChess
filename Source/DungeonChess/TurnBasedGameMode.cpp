@@ -98,7 +98,7 @@ void ATurnBasedGameMode::InitializeGame()
 
             // Get world location using float precision
             FVector StartLocation = GameBoard->GetWorldLocationForTileFloat(StartX, StartY);
-            StartLocation.Z = 100.0f;
+            StartLocation.Z = 0.0f; // No Z offset - pieces sit on the board
 
             PlayerPiece->SetActorLocation(StartLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
@@ -128,6 +128,9 @@ void ATurnBasedGameMode::InitializeGame()
     SpawnRandomEnemies(3);
     SpawnRandomPowerUps(3);
 
+    // Show enemy highlights immediately after spawning
+    HighlightAllEnemyAttackRanges();
+
     StartNextTurn();
 }
 
@@ -150,6 +153,9 @@ void ATurnBasedGameMode::StartNextTurn()
             Piece->OnTurnStart();
         }
     }
+
+    // Show all enemy attack ranges during player's turn
+    HighlightAllEnemyAttackRanges();
 }
 
 void ATurnBasedGameMode::OnPlayerAction()
@@ -182,6 +188,9 @@ void ATurnBasedGameMode::ExecuteEnemyTurns()
         StartNextTurn();
         return;
     }
+
+    // Keep enemy highlights visible during enemy turn
+    // Don't clear them - they should always be visible
 
     // Reset enemy index
     CurrentEnemyIndex = 0;
@@ -225,9 +234,57 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
         return;
     }
 
-    // Pick ONE random enemy to act this turn
-    int32 RandomIndex = FMath::RandRange(0, ValidEnemies.Num() - 1);
-    AChessPieceBase* Enemy = ValidEnemies[RandomIndex];
+    // Pick the BEST enemy to act this turn (closest to player or can attack)
+    AChessPieceBase* Enemy = nullptr;
+    float BestScore = -1.0f;
+
+    for (AChessPieceBase* Candidate : ValidEnemies)
+    {
+        if (!Candidate || !PlayerPiece)
+        {
+            continue;
+        }
+
+        // Check if this enemy can attack the player
+        TArray<FIntPoint> AttackTiles = Candidate->GetAttackTiles(GameBoard);
+        bool bCanAttack = false;
+        for (const FIntPoint& Tile : AttackTiles)
+        {
+            if (Tile.X == PlayerPiece->GridX && Tile.Y == PlayerPiece->GridY)
+            {
+                bCanAttack = true;
+                break;
+            }
+        }
+
+        // Calculate score: prioritize enemies that can attack (score = 1000), otherwise use inverse distance
+        float Score = 0.0f;
+        if (bCanAttack)
+        {
+            Score = 1000.0f; // High priority for enemies that can attack
+        }
+        else
+        {
+            // Use inverse distance (closer = higher score)
+            float Distance = FVector2D::Distance(
+                FVector2D(Candidate->GridX, Candidate->GridY),
+                FVector2D(PlayerPiece->GridX, PlayerPiece->GridY)
+            );
+            Score = 100.0f / (Distance + 1.0f); // +1 to avoid division by zero
+        }
+
+        if (Score > BestScore)
+        {
+            BestScore = Score;
+            Enemy = Candidate;
+        }
+    }
+
+    // Fallback to first enemy if none found (shouldn't happen)
+    if (!Enemy && ValidEnemies.Num() > 0)
+    {
+        Enemy = ValidEnemies[0];
+    }
 
     if (GEngine)
     {
@@ -236,10 +293,9 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
                 Enemy->GridX, Enemy->GridY));
     }
 
-    // Highlight enemy attack range before moving
-    HighlightEnemyAttackRange(Enemy);
+    // Enemy highlights are always visible, no need to re-highlight here
 
-    // Check if player is in attack range (adjacent tiles)
+    // Check if player is in attack range (can be anywhere in attack range, not just adjacent)
     TArray<FIntPoint> AttackTiles = Enemy->GetAttackTiles(GameBoard);
     bool bCanAttackPlayer = false;
 
@@ -254,7 +310,7 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
 
     if (bCanAttackPlayer)
     {
-        // Jump attack - move to player's position and capture
+        // Jump attack - move to player's position and capture (like chess pieces)
         Enemy->JumpAttackPiece(PlayerPiece->GridX, PlayerPiece->GridY, GameBoard);
 
         if (GEngine)
@@ -303,12 +359,7 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
         }
     }
 
-    // Clear highlights after action
-    FTimerHandle ClearTimer;
-    GetWorld()->GetTimerManager().SetTimer(ClearTimer, [this]()
-        {
-            ClearEnemyHighlights();
-        }, 0.3f, false);
+    // Don't clear highlights - they should always be visible
 
     // ONE enemy has acted - immediately end enemy turn and start player turn
     if (GEngine)
@@ -333,17 +384,68 @@ void ATurnBasedGameMode::HighlightEnemyAttackRange(AChessPieceBase* Enemy)
 
     ClearEnemyHighlights();
 
-    TArray<FIntPoint> AttackTiles = Enemy->GetAttackTiles(GameBoard);
+    // Highlight valid moves (movement area)
+    TArray<FIntPoint> ValidMoves = Enemy->GetValidMoves(GameBoard);
+    for (const FIntPoint& Move : ValidMoves)
+    {
+        AChessTile* ChessTile = GameBoard->GetTileAt(Move.X, Move.Y);
+        if (ChessTile)
+        {
+            ChessTile->Highlight(false); // Blue/green highlight for movement
+            HighlightedEnemyTiles.Add(ChessTile);
+        }
+    }
 
+    // Highlight attack tiles (red highlight)
+    TArray<FIntPoint> AttackTiles = Enemy->GetAttackTiles(GameBoard);
     for (const FIntPoint& Tile : AttackTiles)
     {
         AChessTile* ChessTile = GameBoard->GetTileAt(Tile.X, Tile.Y);
         if (ChessTile)
         {
-            ChessTile->Highlight(true); // Red highlight
+            ChessTile->Highlight(true); // Red highlight for attacks
             HighlightedEnemyTiles.Add(ChessTile);
         }
     }
+}
+
+void ATurnBasedGameMode::HighlightAllEnemyAttackRanges()
+{
+    if (!GameBoard)
+    {
+        return;
+    }
+
+    ClearEnemyHighlights();
+
+    // Highlight attack ranges for all enemies (full range, not just occupied tiles)
+    for (AChessPieceBase* Enemy : AllPieces)
+    {
+        if (Enemy && Enemy != PlayerPiece)
+        {
+            // Get full attack range (all tiles that can be attacked, including empty ones)
+            TArray<FIntPoint> AttackRangeTiles = Enemy->GetAttackRangeTiles(GameBoard);
+            for (const FIntPoint& Tile : AttackRangeTiles)
+            {
+                AChessTile* ChessTile = GameBoard->GetTileAt(Tile.X, Tile.Y);
+                if (ChessTile)
+                {
+                    // Only add if not already highlighted (to avoid duplicates)
+                    if (!HighlightedEnemyTiles.Contains(ChessTile))
+                    {
+                        ChessTile->Highlight(true); // Red highlight for attacks
+                        HighlightedEnemyTiles.Add(ChessTile);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ATurnBasedGameMode::RefreshEnemyHighlights()
+{
+    // Refresh highlights to remove dead enemies' attack ranges
+    HighlightAllEnemyAttackRanges();
 }
 
 void ATurnBasedGameMode::ClearEnemyHighlights()
@@ -417,9 +519,11 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
 
         if (Tile && !Tile->OccupyingPiece)
         {
-            // Use the tile's actual location (tiles are already centered)
-            FVector SpawnLocation = Tile->GetActorLocation();
-            SpawnLocation.Z = 100.0f; 
+            // Use the same positioning method as player pieces for consistency
+            float SpawnCenterX = RandomX + 0.5f;
+            float SpawnCenterY = RandomY + 0.5f;
+            FVector SpawnLocation = GameBoard->GetWorldLocationForTileFloat(SpawnCenterX, SpawnCenterY);
+            SpawnLocation.Z = 0.0f; // No Z offset - pieces sit on the board
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;
 
@@ -500,7 +604,10 @@ void ATurnBasedGameMode::SpawnRandomPowerUps(int32 Count)
 
         if (Tile && !Tile->OccupyingPiece)
         {
-            FVector SpawnLocation = Tile->GetActorLocation();
+            // Use the same positioning method as player pieces for consistency
+            float CenterX = RandomX + 0.5f;
+            float CenterY = RandomY + 0.5f;
+            FVector SpawnLocation = GameBoard->GetWorldLocationForTileFloat(CenterX, CenterY);
             SpawnLocation.Z = 50.0f; // Lower than pieces
             FRotator SpawnRotation = FRotator::ZeroRotator;
             FActorSpawnParameters SpawnParams;

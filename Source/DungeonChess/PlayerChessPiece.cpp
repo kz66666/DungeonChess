@@ -25,6 +25,10 @@ APlayerChessPiece::APlayerChessPiece()
 
     PieceType = EPieceType::PlayerPawn;
     MovementRange = 1;
+    
+    // Make player stronger - king-like stats
+    AttackPower = 50; // Increased from default 25
+    Health = 150; // Increased from default 100
 }
 
 TArray<FIntPoint> APlayerChessPiece::GetValidMoves(AChessBoard* Board)
@@ -36,12 +40,12 @@ TArray<FIntPoint> APlayerChessPiece::GetValidMoves(AChessBoard* Board)
         return ValidMoves;
     }
 
-    // Player can move in cardinal directions
+    // Player can move in all 8 directions (like a king in chess)
     TArray<FIntPoint> Directions = {
-        FIntPoint(1, 0),   // Right
-        FIntPoint(-1, 0),  // Left
-        FIntPoint(0, 1),   // Forward
-        FIntPoint(0, -1)   // Back
+        FIntPoint(1, 0), FIntPoint(-1, 0),   // Right, Left
+        FIntPoint(0, 1), FIntPoint(0, -1),   // Forward, Back
+        FIntPoint(1, 1), FIntPoint(1, -1),  // Diagonal: Right-Forward, Right-Back
+        FIntPoint(-1, 1), FIntPoint(-1, -1)  // Diagonal: Left-Forward, Left-Back
     };
 
     for (const FIntPoint& Dir : Directions)
@@ -49,23 +53,27 @@ TArray<FIntPoint> APlayerChessPiece::GetValidMoves(AChessBoard* Board)
         int32 CheckX = GridX + Dir.X;
         int32 CheckY = GridY + Dir.Y;
 
-        if (Board->IsValidPosition(CheckX, CheckY))
-        {
-            AChessTile* Tile = Board->GetTileAt(CheckX, CheckY);
-            if (Tile)
+            if (Board->IsValidPosition(CheckX, CheckY))
             {
-                // In super mode, can move to tiles with enemies (eat them)
-                if (bSuperModeActive && Tile->OccupyingPiece)
+                AChessTile* Tile = Board->GetTileAt(CheckX, CheckY);
+                if (Tile)
                 {
-                    ValidMoves.Add(FIntPoint(CheckX, CheckY));
-                }
-                // Normal mode - only empty tiles
-                else if (!Tile->OccupyingPiece)
-                {
-                    ValidMoves.Add(FIntPoint(CheckX, CheckY));
+                    // In super mode, can move to tiles with enemies (eat them), but not allies
+                    if (bSuperModeActive && Tile->OccupyingPiece)
+                    {
+                        // Only allow moving to enemy tiles, not allies
+                        if (!IsAlly(Tile->OccupyingPiece))
+                        {
+                            ValidMoves.Add(FIntPoint(CheckX, CheckY));
+                        }
+                    }
+                    // Normal mode - only empty tiles
+                    else if (!Tile->OccupyingPiece)
+                    {
+                        ValidMoves.Add(FIntPoint(CheckX, CheckY));
+                    }
                 }
             }
-        }
     }
 
     return ValidMoves;
@@ -80,22 +88,31 @@ TArray<FIntPoint> APlayerChessPiece::GetAttackTiles(AChessBoard* Board)
         return AttackTiles;
     }
 
-    // Check all 4 diagonal directions for enemies
-    TArray<FIntPoint> Diagonals = {
-        FIntPoint(1, 1), FIntPoint(1, -1),
-        FIntPoint(-1, 1), FIntPoint(-1, -1)
+    // Player can always attack in all 8 directions (like a king in chess)
+    TArray<FIntPoint> AllDirections = {
+        FIntPoint(1, 0), FIntPoint(-1, 0),   // Right, Left
+        FIntPoint(0, 1), FIntPoint(0, -1),   // Forward, Back
+        FIntPoint(1, 1), FIntPoint(1, -1),  // Diagonal: Right-Forward, Right-Back
+        FIntPoint(-1, 1), FIntPoint(-1, -1)  // Diagonal: Left-Forward, Left-Back
     };
 
-    for (const FIntPoint& Dir : Diagonals)
+    for (const FIntPoint& Dir : AllDirections)
     {
         int32 CheckX = GridX + Dir.X;
         int32 CheckY = GridY + Dir.Y;
 
-        if (CanAttackDiagonal(CheckX, CheckY))
+        if (Board->IsValidPosition(CheckX, CheckY))
         {
-            AttackTiles.Add(FIntPoint(CheckX, CheckY));
+            AChessTile* Tile = Board->GetTileAt(CheckX, CheckY);
+            if (Tile && Tile->OccupyingPiece && !IsAlly(Tile->OccupyingPiece))
+            {
+                AttackTiles.Add(FIntPoint(CheckX, CheckY));
+            }
         }
     }
+    
+    // In super mode, can also move to tiles with enemies (eat them)
+    // This is handled in GetValidMoves
 
     return AttackTiles;
 }

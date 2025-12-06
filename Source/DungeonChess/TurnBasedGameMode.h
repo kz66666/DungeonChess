@@ -55,6 +55,9 @@ public:
 
     void SpawnRandomEnemies(int32 Count);
     void SpawnRandomPowerUps(int32 Count);
+    
+    // Refresh enemy highlights (e.g., when enemies die)
+    void RefreshEnemyHighlights();
 
 protected:
     virtual void BeginPlay() override;
@@ -68,6 +71,7 @@ private:
     int32 CurrentEnemyIndex = 0;
 
     void HighlightEnemyAttackRange(class AChessPieceBase* Enemy);
+    void HighlightAllEnemyAttackRanges();
     void ClearEnemyHighlights();
     TArray<class AChessTile*> HighlightedEnemyTiles;
 };
