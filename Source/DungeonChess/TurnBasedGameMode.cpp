@@ -125,8 +125,8 @@ void ATurnBasedGameMode::InitializeGame()
     }
 
     // Spawn enemies and power-ups
-    SpawnRandomEnemies(3);
-    SpawnRandomPowerUps(3);
+    SpawnRandomEnemies(1);
+    SpawnRandomPowerUps(10);
 
     // Show enemy highlights immediately after spawning
     HighlightAllEnemyAttackRanges();
@@ -183,6 +183,21 @@ void ATurnBasedGameMode::OnPlayerAction()
 
 void ATurnBasedGameMode::ExecuteEnemyTurns()
 {
+    // Double-check if enemy turn should be skipped
+    if (bSkipEnemyTurn)
+    {
+        bSkipEnemyTurn = false;
+
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Yellow,
+                TEXT("Enemy turn forcibly ended!"));
+        }
+
+        StartNextTurn();
+        return;
+    }
+
     if (!GameBoard || !PlayerPiece)
     {
         StartNextTurn();
@@ -310,25 +325,25 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
 
     if (bCanAttackPlayer)
     {
-        // Jump attack - move to player's position and capture (like chess pieces)
-        Enemy->JumpAttackPiece(PlayerPiece->GridX, PlayerPiece->GridY, GameBoard);
+        //// Jump attack - move to player's position and capture (like chess pieces)
+        //Enemy->JumpAttackPiece(PlayerPiece->GridX, PlayerPiece->GridY, GameBoard);
 
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-                TEXT("Enemy jumped and captured you!"));
-        }
+        //if (GEngine)
+        //{
+        //    GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
+        //        TEXT("Enemy jumped and captured you!"));
+        //}
 
-        // Check if player is dead
-        if (PlayerPiece->Health <= 0)
-        {
-            if (GEngine)
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
-                    TEXT("GAME OVER! You were captured!"));
-            }
-            // TODO: Handle game over
-        }
+        //// Check if player is dead
+        //if (PlayerPiece->Health <= 0)
+        //{
+        //    if (GEngine)
+        //    {
+        //        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+        //            TEXT("GAME OVER! You were captured!"));
+        //    }
+        //    // TODO: Handle game over
+        //}
     }
     else
     {

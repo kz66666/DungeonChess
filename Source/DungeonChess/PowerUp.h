@@ -9,7 +9,8 @@ UENUM(BlueprintType)
 enum class EPowerUpType : uint8
 {
     ExtraMove,
-    SuperMode
+    SuperMode,
+    Revive
 };
 
 UCLASS()
@@ -39,6 +40,12 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PowerUp|Visuals")
     UMaterialInterface* SuperModeMaterial;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PowerUp|Visuals")
+    UStaticMesh* ReviveMesh;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PowerUp|Visuals")
+    UMaterialInterface* ReviveMaterial;
 
     // Super mode configuration
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "PowerUp|SuperMode")

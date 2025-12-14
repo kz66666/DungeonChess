@@ -59,6 +59,9 @@ public:
     // Refresh enemy highlights (e.g., when enemies die)
     void RefreshEnemyHighlights();
 
+    UPROPERTY(BlueprintReadWrite, Category = "Turn Management")
+    bool bSkipEnemyTurn = false;
+
 protected:
     virtual void BeginPlay() override;
 

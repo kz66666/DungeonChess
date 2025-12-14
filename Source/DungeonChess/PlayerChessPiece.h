@@ -26,4 +26,8 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
     class UCameraComponent* FollowCamera;
 
+    // Number of revives available
+    UPROPERTY(BlueprintReadWrite, Category = "Power-Ups")
+    int32 RevivesRemaining = 0;
+
 };

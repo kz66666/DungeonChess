@@ -3,6 +3,7 @@
 #include "ChessTile.h"
 #include "PowerUp.h"
 #include "TurnBasedGameMode.h"
+#include "PlayerChessPiece.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Engine/Engine.h"
@@ -370,6 +371,28 @@ void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
     // Check if target died
     if (Target->Health <= 0)
     {
+        // Check if target is player with revive
+        if (APlayerChessPiece* PlayerTarget = Cast<APlayerChessPiece>(Target))
+        {
+            if (PlayerTarget->RevivesRemaining > 0) 
+            {
+                // Use one revive!
+                PlayerTarget->RevivesRemaining--;  
+                PlayerTarget->Health = 100; // Full health restoration
+
+                if (GEngine)
+                {
+                    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green,
+                        FString::Printf(TEXT("REVIVED! %d revives remaining!"),
+                            PlayerTarget->RevivesRemaining));
+                }
+
+                // Don't destroy the player
+                bHasActedThisTurn = true;
+                return;
+            }
+        }
+
         if (GEngine)
         {
             GEngine->AddOnScreenDebugMessage(-1, 4.0f, FColor::Yellow,
@@ -469,6 +492,39 @@ void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard*
         GameMode->AllPieces.Remove(Target);
         // Enemy is being destroyed - refresh highlights
         GameMode->RefreshEnemyHighlights();
+    }
+
+    // Check if target is player with revive BEFORE destroying
+    bool bTargetRevived = false;
+    if (APlayerChessPiece* PlayerTarget = Cast<APlayerChessPiece>(Target))
+    {
+        if (PlayerTarget->RevivesRemaining > 0)  
+        {
+            // Use one revive!
+            PlayerTarget->RevivesRemaining--; 
+            PlayerTarget->Health = 100;
+            bTargetRevived = true;
+
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green,
+                    FString::Printf(TEXT("*** REVIVED! %d revives remaining! ***"),
+                        PlayerTarget->RevivesRemaining));
+            }
+        }
+    }
+
+    if (bTargetRevived)
+    {
+        // Target survived - don't capture
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange,
+                TEXT("Capture failed - target revived!"));
+        }
+
+        bHasActedThisTurn = true;
+        return;
     }
     
     Target->Destroy();
