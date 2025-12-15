@@ -97,6 +97,16 @@ void AChessPlayerController::SetupInputComponent()
                 GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Green, TEXT("EndTurn Action Bound"));
             }
         }
+
+        if (OpenMenuAction)
+        {
+            EnhancedInputComponent->BindAction(
+                OpenMenuAction,
+                ETriggerEvent::Triggered,
+                this,
+                &AChessPlayerController::OpenMainMenu
+            );
+        }
     }
     else
     {
@@ -406,4 +416,9 @@ void AChessPlayerController::OnEndTurn(const FInputActionValue& Value)
             GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Red, TEXT("GameMode not found!"));
         }
     }
+}
+
+void AChessPlayerController::OpenMainMenu()
+{
+    UGameplayStatics::OpenLevel(this, FName("MainMenuLevel"));
 }

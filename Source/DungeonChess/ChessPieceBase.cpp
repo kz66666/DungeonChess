@@ -425,6 +425,8 @@ void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
         {
             // Remove enemy from AllPieces array
             GameMode->AllPieces.Remove(Target);
+			// Check to see if all the enemies are defeated
+            GameMode->CheckWinCondition();
             // Enemy is being destroyed - refresh highlights
             GameMode->RefreshEnemyHighlights();
         }
@@ -511,6 +513,9 @@ void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard*
                         PlayerTarget->RevivesRemaining));
             }
         }
+        else {
+            PlayerTarget->Health = 0;
+        }
     }
 
     if (bTargetRevived)
@@ -526,6 +531,7 @@ void AChessPieceBase::JumpAttackPiece(int32 TargetX, int32 TargetY, AChessBoard*
         return;
     }
     
+    GameMode->CheckLoseCondition();
     Target->Destroy();
 
     // Update grid position

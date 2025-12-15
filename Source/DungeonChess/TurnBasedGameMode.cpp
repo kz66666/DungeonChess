@@ -12,6 +12,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
 #include "TimerManager.h"
+#include "Blueprint/UserWidget.h"
 
 ATurnBasedGameMode::ATurnBasedGameMode()
 {
@@ -340,17 +341,6 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
             GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
                 TEXT("Enemy jumped and captured you!"));
         }
-
-        // Check if player is dead
-        if (PlayerPiece->Health <= 0)
-        {
-            if (GEngine)
-            {
-                GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
-                    TEXT("GAME OVER! You were captured!"));
-            }
-            // TODO: Handle game over
-        }
     }
     else
     {
@@ -483,123 +473,6 @@ void ATurnBasedGameMode::ClearEnemyHighlights()
     HighlightedEnemyTiles.Empty();
 }
 
-//void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
-//{
-//    if (!GameBoard)
-//    {
-//        if (GEngine)
-//        {
-//            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No GameBoard for enemy spawn!"));
-//        }
-//        return;
-//    }
-//
-//    /*if (!EnemyPieceClass)
-//    {
-//        if (GEngine)
-//        {
-//            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No EnemyPieceClass set in GameMode!"));
-//        }
-//        return;
-//    }*/
-//
-//    /*TArray<TSubclassOf<AChessPieceBase>> EnemyClasses = { ARookChessPiece::StaticClass(),
-//                                                     AKnightChessPiece::StaticClass(),
-//                                                     ABishopChessPiece::StaticClass() };*/
-//
-//    TArray<EPieceType> EnemyTypes = {
-//        EPieceType::EnemyRook,
-//        EPieceType::EnemyKnight,
-//        EPieceType::EnemyBishop
-//    };
-//
-//
-//
-//    int32 SpawnedCount = 0;
-//    int32 Attempts = 0;
-//    int32 MaxAttempts = Count * 10;
-//
-//    while (SpawnedCount < Count && Attempts < MaxAttempts)
-//    {
-//        Attempts++;
-//
-//        int32 RandomX = FMath::RandRange(0, GameBoard->BoardWidth - 1);
-//        int32 RandomY = FMath::RandRange(0, GameBoard->BoardHeight - 1);
-//
-//		/*GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue,
-//			FString::Printf(TEXT("Trying to spawn enemy at (%d, %d)"), RandomX, RandomY));*/
-//
-//        // Skip if too close to player spawn
-//        int32 CenterX = GameBoard->BoardWidth / 2;
-//        int32 CenterY = GameBoard->BoardHeight / 2;
-//        if (FMath::Abs(RandomX - CenterX) <= 1 && FMath::Abs(RandomY - CenterY) <= 1)
-//        {
-//            continue;
-//        }
-//
-//        AChessTile* Tile = GameBoard->GetTileAt(RandomX, RandomY);
-//
-//        if (Tile && !Tile->OccupyingPiece)
-//        {
-//            // Use the same positioning method as player pieces for consistency
-//            float SpawnCenterX = RandomX + 0.5f;
-//            float SpawnCenterY = RandomY + 0.5f;
-//            FVector SpawnLocation = GameBoard->GetWorldLocationForTileFloat(SpawnCenterX, SpawnCenterY);
-//            SpawnLocation.Z = 0.0f; // No Z offset - pieces sit on the board
-//            FRotator SpawnRotation = FRotator(0.f, 90.f, 0.f);
-//            FActorSpawnParameters SpawnParams;
-//
-//            int32 Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 1);
-//
-//            GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Orange,
-//                FString::Printf(TEXT("Trying to spawn class: %s"), *EnemyPieceClasses[Index]->GetName()));
-//
-//            /*GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan,
-//                FString::Printf(TEXT("Class %s is abstract? %s"),
-//                    *EnemyClasses[Index]->GetName(),
-//                    EnemyClasses[Index]->HasAnyClassFlags(CLASS_Abstract) ? TEXT("Yes") : TEXT("No")));*/
-//
-//
-//
-//            AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(
-//                EnemyPieceClasses[Index],
-//                SpawnLocation,
-//                SpawnRotation,
-//                SpawnParams
-//            );
-//
-//            if (Enemy)
-//            {
-//                Enemy->GridX = RandomX;
-//                Enemy->GridY = RandomY;
-//                /*Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3));*/
-//                Enemy->PieceType = EnemyTypes[Index];
-//
-//                Tile->OccupyingPiece = Enemy;
-//                AllPieces.Add(Enemy);
-//                SpawnedCount++;
-//
-//                if (GEngine)
-//                {
-//                    GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Orange,
-//                        FString::Printf(TEXT("Enemy %d spawned at grid (%d, %d), world (%.1f, %.1f)"),
-//                            SpawnedCount, RandomX, RandomY, SpawnLocation.X, SpawnLocation.Y));
-//                }
-//            }
-//            else {
-//                GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red,
-//                    FString::Printf(TEXT("IT'S NOT AN ENEMY")));
-//            }
-//        }
-//    }
-//
-//    if (GEngine)
-//    {
-//        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow,
-//            FString::Printf(TEXT("Spawned %d enemies"), SpawnedCount));
-//    }
-//}
-
 void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
 {
     if (!GameBoard)
@@ -614,7 +487,7 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
     TArray<EPieceType> EnemyTypes = {
         EPieceType::EnemyKnight,
         EPieceType::EnemyBishop,
-       /* EPieceType::EnemyQueen,*/
+        EPieceType::EnemyQueen,
     };
 
     int32 SpawnedCount = 0;
@@ -778,3 +651,93 @@ void ATurnBasedGameMode::SpawnRandomPowerUps(int32 Count)
         }
     }
 }
+
+void ATurnBasedGameMode::CheckWinCondition()
+{
+    // Count living enemies (exclude player)
+    int32 EnemyCount = 0;
+    for (AChessPieceBase* Piece : AllPieces)
+    {
+        if (Piece && Piece != PlayerPiece && Piece->Health > 0)
+        {
+            EnemyCount++;
+        }
+    }
+
+    if (EnemyCount == 0)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Green,
+                TEXT("All enemies defeated! Victory!"));
+        }
+        EndGame(EGameResult::Win);
+    }
+}
+
+void ATurnBasedGameMode::CheckLoseCondition()
+{
+    if (!PlayerPiece || PlayerPiece->Health <= 0)
+    {
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+                TEXT("Player defeated! Game Over!"));
+        }
+        EndGame(EGameResult::Lose);
+    }
+}
+
+void ATurnBasedGameMode::EndGame(EGameResult Result)
+{
+    if (GameResult != EGameResult::None)
+    {
+        return; // Already ended
+    }
+    GameResult = Result;
+
+    APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+    if (!PC) return;
+
+    PC->SetInputMode(FInputModeUIOnly());
+    PC->bShowMouseCursor = true;
+
+    if (EndGameWidgetClass)
+    {
+        // Create the widget
+        EndGameWidget = CreateWidget<UUserWidget>(PC, EndGameWidgetClass);
+        if (EndGameWidget)
+        {
+            EndGameWidget->AddToViewport(100); // Always on top
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("End Game Widget Added!"));
+
+            // Set the bPlayerWon variable using reflection
+            bool bPlayerWon = (Result == EGameResult::Win);
+
+            // Find the property by name
+            FBoolProperty* PlayerWonProp = FindFProperty<FBoolProperty>(
+                EndGameWidget->GetClass(),
+                FName("bPlayerWon")
+            );
+
+            if (PlayerWonProp)
+            {
+                // Set the property value
+                PlayerWonProp->SetPropertyValue_InContainer(EndGameWidget, bPlayerWon);
+            }
+
+            // Add to viewport AFTER setting the property
+            EndGameWidget->AddToViewport(100);
+        }
+    }
+
+    if (GEngine)
+    {
+        GEngine->AddOnScreenDebugMessage(
+            -1, 10.f,
+            Result == EGameResult::Win ? FColor::Green : FColor::Red,
+            Result == EGameResult::Win ? TEXT("YOU WIN!") : TEXT("YOU LOSE!")
+        );
+    }
+}
+

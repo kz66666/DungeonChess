@@ -6,6 +6,14 @@
 #include "GameFramework/GameModeBase.h"
 #include "TurnBasedGameMode.generated.h"
 
+UENUM(BlueprintType)
+enum class EGameResult : uint8
+{
+    None,
+    Win,
+    Lose
+};
+
 UCLASS()
 class DUNGEONCHESS_API ATurnBasedGameMode : public AGameModeBase
 {
@@ -61,6 +69,19 @@ public:
 
     UPROPERTY(BlueprintReadWrite, Category = "Turn Management")
     bool bSkipEnemyTurn = false;
+
+    UPROPERTY(EditDefaultsOnly, Category = "UI")
+    TSubclassOf<UUserWidget> EndGameWidgetClass;
+
+    UPROPERTY()
+    UUserWidget* EndGameWidget;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Game State")
+    EGameResult GameResult = EGameResult::None;
+
+    void CheckWinCondition();
+    void CheckLoseCondition();
+    void EndGame(EGameResult Result);
 
 protected:
     virtual void BeginPlay() override;

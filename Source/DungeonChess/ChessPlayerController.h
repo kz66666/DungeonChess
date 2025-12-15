@@ -33,6 +33,9 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
     UInputAction* EndTurnAction;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")
+    UInputAction* OpenMenuAction;
+
     UPROPERTY()
     class APlayerChessPiece* ControlledPiece;
 
@@ -46,6 +49,9 @@ public:
     void ClearHighlights();
 
     AChessTile* GetTileUnderCursor();
+
+    UFUNCTION()
+    void OpenMainMenu();
 
 protected:
     virtual void BeginPlay() override;
