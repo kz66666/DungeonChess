@@ -62,9 +62,6 @@ public:
     UPROPERTY(BlueprintReadWrite, Category = "Turn Management")
     bool bSkipEnemyTurn = false;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Level")
-    int32 LevelNumber = 1;
-
 protected:
     virtual void BeginPlay() override;
 

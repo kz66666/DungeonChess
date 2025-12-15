@@ -25,7 +25,8 @@ TArray<FIntPoint> ABishopChessPiece::GetValidMoves(class AChessBoard* Board) {
     };
 
     // Max steps based on board size
-    int32 MaxSteps = FMath::Max(Board->BoardWidth, Board->BoardHeight);
+    /*int32 MaxSteps = FMath::Max(Board->BoardWidth, Board->BoardHeight);*/
+	int32 MaxSteps = 4; // Limit bishop movement to 4 tiles for balance
 
     for (const FIntPoint& Dir : Directions)
     {
@@ -63,7 +64,8 @@ TArray<FIntPoint> ABishopChessPiece::GetAttackTiles(AChessBoard* Board)
         FIntPoint(1, -1), FIntPoint(-1, 1)
     };
 
-    int32 MaxSteps = FMath::Max(Board->BoardWidth, Board->BoardHeight);
+    /*int32 MaxSteps = FMath::Max(Board->BoardWidth, Board->BoardHeight);*/
+    int32 MaxSteps = 4; // Limit bishop movement to 4 tiles for balance
 
     for (const FIntPoint& Dir : Directions)
     {
@@ -110,7 +112,8 @@ TArray<FIntPoint> ABishopChessPiece::GetAttackRangeTiles(AChessBoard* Board)
         FIntPoint(1, -1), FIntPoint(-1, 1)
     };
 
-    int32 MaxSteps = FMath::Max(Board->BoardWidth, Board->BoardHeight);
+    /*int32 MaxSteps = FMath::Max(Board->BoardWidth, Board->BoardHeight);*/
+    int32 MaxSteps = 4; // Limit bishop movement to 4 tiles for balance
 
     for (const FIntPoint& Dir : Directions)
     {

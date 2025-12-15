@@ -12,7 +12,8 @@ enum class EPieceType : uint8
 	PlayerPawn,
 	EnemyRook,
 	EnemyKnight,
-	EnemyBishop
+	EnemyBishop,
+	EnemyQueen,
 };
 
 UCLASS()

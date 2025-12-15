@@ -124,9 +124,16 @@ void ATurnBasedGameMode::InitializeGame()
         }
     }
 
-    // Spawn enemies and power-ups
-    SpawnRandomEnemies(1);
-    SpawnRandomPowerUps(10);
+    FString LevelName = GetWorld()->GetMapName();
+    LevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+    if (LevelName.Contains("Level_One")) {
+		SpawnRandomEnemies(3);
+    }
+    else {
+        // Spawn enemies and power-ups
+        SpawnRandomEnemies(1);
+    }
+    SpawnRandomPowerUps(3);
 
     // Show enemy highlights immediately after spawning
     HighlightAllEnemyAttackRanges();
@@ -325,25 +332,25 @@ void ATurnBasedGameMode::ProcessEnemyTurn()
 
     if (bCanAttackPlayer)
     {
-        //// Jump attack - move to player's position and capture (like chess pieces)
-        //Enemy->JumpAttackPiece(PlayerPiece->GridX, PlayerPiece->GridY, GameBoard);
+        // Jump attack - move to player's position and capture (like chess pieces)
+        Enemy->JumpAttackPiece(PlayerPiece->GridX, PlayerPiece->GridY, GameBoard);
 
-        //if (GEngine)
-        //{
-        //    GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
-        //        TEXT("Enemy jumped and captured you!"));
-        //}
+        if (GEngine)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red,
+                TEXT("Enemy jumped and captured you!"));
+        }
 
-        //// Check if player is dead
-        //if (PlayerPiece->Health <= 0)
-        //{
-        //    if (GEngine)
-        //    {
-        //        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
-        //            TEXT("GAME OVER! You were captured!"));
-        //    }
-        //    // TODO: Handle game over
-        //}
+        // Check if player is dead
+        if (PlayerPiece->Health <= 0)
+        {
+            if (GEngine)
+            {
+                GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red,
+                    TEXT("GAME OVER! You were captured!"));
+            }
+            // TODO: Handle game over
+        }
     }
     else
     {
@@ -605,9 +612,9 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
     }
 
     TArray<EPieceType> EnemyTypes = {
-        EPieceType::EnemyRook,
         EPieceType::EnemyKnight,
-        EPieceType::EnemyBishop
+        EPieceType::EnemyBishop,
+       /* EPieceType::EnemyQueen,*/
     };
 
     int32 SpawnedCount = 0;
@@ -635,8 +642,16 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
             continue;
         }
 
+        FString LevelName = GetWorld()->GetMapName();
+        LevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+
+		int32 Index = 2; // Default to Queen
+
         // Choose random enemy class
-        int32 Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 1);
+        if (LevelName.Contains(TEXT("Level_One")))
+        {
+            Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 2);
+        }
 
         // Debug: Check class validity
         if (!EnemyPieceClasses.IsValidIndex(Index) || !EnemyPieceClasses[Index])
