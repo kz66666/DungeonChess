@@ -45,10 +45,9 @@ AChessPieceBase::AChessPieceBase()
     PieceMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PieceMesh"));
     if (PieceMesh)
     {
+        PieceMesh->SetupAttachment(RootComponent);
         PieceMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     }
-    RootComponent = PieceMesh;
-
 }
 
 void AChessPieceBase::Tick(float DeltaTime)

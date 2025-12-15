@@ -476,6 +476,123 @@ void ATurnBasedGameMode::ClearEnemyHighlights()
     HighlightedEnemyTiles.Empty();
 }
 
+//void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
+//{
+//    if (!GameBoard)
+//    {
+//        if (GEngine)
+//        {
+//            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No GameBoard for enemy spawn!"));
+//        }
+//        return;
+//    }
+//
+//    /*if (!EnemyPieceClass)
+//    {
+//        if (GEngine)
+//        {
+//            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No EnemyPieceClass set in GameMode!"));
+//        }
+//        return;
+//    }*/
+//
+//    /*TArray<TSubclassOf<AChessPieceBase>> EnemyClasses = { ARookChessPiece::StaticClass(),
+//                                                     AKnightChessPiece::StaticClass(),
+//                                                     ABishopChessPiece::StaticClass() };*/
+//
+//    TArray<EPieceType> EnemyTypes = {
+//        EPieceType::EnemyRook,
+//        EPieceType::EnemyKnight,
+//        EPieceType::EnemyBishop
+//    };
+//
+//
+//
+//    int32 SpawnedCount = 0;
+//    int32 Attempts = 0;
+//    int32 MaxAttempts = Count * 10;
+//
+//    while (SpawnedCount < Count && Attempts < MaxAttempts)
+//    {
+//        Attempts++;
+//
+//        int32 RandomX = FMath::RandRange(0, GameBoard->BoardWidth - 1);
+//        int32 RandomY = FMath::RandRange(0, GameBoard->BoardHeight - 1);
+//
+//		/*GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue,
+//			FString::Printf(TEXT("Trying to spawn enemy at (%d, %d)"), RandomX, RandomY));*/
+//
+//        // Skip if too close to player spawn
+//        int32 CenterX = GameBoard->BoardWidth / 2;
+//        int32 CenterY = GameBoard->BoardHeight / 2;
+//        if (FMath::Abs(RandomX - CenterX) <= 1 && FMath::Abs(RandomY - CenterY) <= 1)
+//        {
+//            continue;
+//        }
+//
+//        AChessTile* Tile = GameBoard->GetTileAt(RandomX, RandomY);
+//
+//        if (Tile && !Tile->OccupyingPiece)
+//        {
+//            // Use the same positioning method as player pieces for consistency
+//            float SpawnCenterX = RandomX + 0.5f;
+//            float SpawnCenterY = RandomY + 0.5f;
+//            FVector SpawnLocation = GameBoard->GetWorldLocationForTileFloat(SpawnCenterX, SpawnCenterY);
+//            SpawnLocation.Z = 0.0f; // No Z offset - pieces sit on the board
+//            FRotator SpawnRotation = FRotator(0.f, 90.f, 0.f);
+//            FActorSpawnParameters SpawnParams;
+//
+//            int32 Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 1);
+//
+//            GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Orange,
+//                FString::Printf(TEXT("Trying to spawn class: %s"), *EnemyPieceClasses[Index]->GetName()));
+//
+//            /*GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan,
+//                FString::Printf(TEXT("Class %s is abstract? %s"),
+//                    *EnemyClasses[Index]->GetName(),
+//                    EnemyClasses[Index]->HasAnyClassFlags(CLASS_Abstract) ? TEXT("Yes") : TEXT("No")));*/
+//
+//
+//
+//            AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(
+//                EnemyPieceClasses[Index],
+//                SpawnLocation,
+//                SpawnRotation,
+//                SpawnParams
+//            );
+//
+//            if (Enemy)
+//            {
+//                Enemy->GridX = RandomX;
+//                Enemy->GridY = RandomY;
+//                /*Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3));*/
+//                Enemy->PieceType = EnemyTypes[Index];
+//
+//                Tile->OccupyingPiece = Enemy;
+//                AllPieces.Add(Enemy);
+//                SpawnedCount++;
+//
+//                if (GEngine)
+//                {
+//                    GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Orange,
+//                        FString::Printf(TEXT("Enemy %d spawned at grid (%d, %d), world (%.1f, %.1f)"),
+//                            SpawnedCount, RandomX, RandomY, SpawnLocation.X, SpawnLocation.Y));
+//                }
+//            }
+//            else {
+//                GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red,
+//                    FString::Printf(TEXT("IT'S NOT AN ENEMY")));
+//            }
+//        }
+//    }
+//
+//    if (GEngine)
+//    {
+//        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow,
+//            FString::Printf(TEXT("Spawned %d enemies"), SpawnedCount));
+//    }
+//}
+
 void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
 {
     if (!GameBoard)
@@ -487,26 +604,11 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
         return;
     }
 
-    /*if (!EnemyPieceClass)
-    {
-        if (GEngine)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("No EnemyPieceClass set in GameMode!"));
-        }
-        return;
-    }*/
-
-    /*TArray<TSubclassOf<AChessPieceBase>> EnemyClasses = { ARookChessPiece::StaticClass(),
-                                                     AKnightChessPiece::StaticClass(),
-                                                     ABishopChessPiece::StaticClass() };*/
-
     TArray<EPieceType> EnemyTypes = {
         EPieceType::EnemyRook,
         EPieceType::EnemyKnight,
         EPieceType::EnemyBishop
     };
-
-
 
     int32 SpawnedCount = 0;
     int32 Attempts = 0;
@@ -519,9 +621,6 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
         int32 RandomX = FMath::RandRange(0, GameBoard->BoardWidth - 1);
         int32 RandomY = FMath::RandRange(0, GameBoard->BoardHeight - 1);
 
-		/*GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Blue,
-			FString::Printf(TEXT("Trying to spawn enemy at (%d, %d)"), RandomX, RandomY));*/
-
         // Skip if too close to player spawn
         int32 CenterX = GameBoard->BoardWidth / 2;
         int32 CenterY = GameBoard->BoardHeight / 2;
@@ -531,67 +630,76 @@ void ATurnBasedGameMode::SpawnRandomEnemies(int32 Count)
         }
 
         AChessTile* Tile = GameBoard->GetTileAt(RandomX, RandomY);
-
-        if (Tile && !Tile->OccupyingPiece)
+        if (!Tile || Tile->OccupyingPiece)
         {
-            // Use the same positioning method as player pieces for consistency
-            float SpawnCenterX = RandomX + 0.5f;
-            float SpawnCenterY = RandomY + 0.5f;
-            FVector SpawnLocation = GameBoard->GetWorldLocationForTileFloat(SpawnCenterX, SpawnCenterY);
-            SpawnLocation.Z = 0.0f; // No Z offset - pieces sit on the board
-            FRotator SpawnRotation = FRotator::ZeroRotator;
-            FActorSpawnParameters SpawnParams;
+            continue;
+        }
 
-            int32 Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 1);
+        // Choose random enemy class
+        int32 Index = FMath::RandRange(0, EnemyPieceClasses.Num() - 1);
 
-            /*GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange,
-                FString::Printf(TEXT("Trying to spawn class: %s"), *EnemyClasses[Index]->GetName()));
+        // Debug: Check class validity
+        if (!EnemyPieceClasses.IsValidIndex(Index) || !EnemyPieceClasses[Index])
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+                FString::Printf(TEXT("Enemy class at index %d is invalid!"), Index));
+            continue;
+        }
 
-            GEngine->AddOnScreenDebugMessage(-1, 3.f, FColor::Cyan,
-                FString::Printf(TEXT("Class %s is abstract? %s"),
-                    *EnemyClasses[Index]->GetName(),
-                    EnemyClasses[Index]->HasAnyClassFlags(CLASS_Abstract) ? TEXT("Yes") : TEXT("No")));*/
+        // Debug: Check if class is child of AChessPieceBase
+        if (!EnemyPieceClasses[Index]->IsChildOf(AChessPieceBase::StaticClass()))
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red,
+                FString::Printf(TEXT("Class %s is not a child of AChessPieceBase!"), *EnemyPieceClasses[Index]->GetName()));
+            continue;
+        }
 
+        // Spawn location
+        float SpawnCenterX = RandomX + 0.5f;
+        float SpawnCenterY = RandomY + 0.5f;
+        FVector SpawnLocation = GameBoard->GetWorldLocationForTileFloat(SpawnCenterX, SpawnCenterY);
+        SpawnLocation.Z = 0.0f;
+        FRotator SpawnRotation = FRotator(0.f, 90.f, 0.f);
+        FActorSpawnParameters SpawnParams;
+        SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
+        GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Orange,
+            FString::Printf(TEXT("Trying to spawn class: %s at grid (%d, %d), world (%.1f, %.1f)"),
+                *EnemyPieceClasses[Index]->GetName(), RandomX, RandomY, SpawnLocation.X, SpawnLocation.Y));
 
-            AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(
-                EnemyPieceClasses[Index],
-                SpawnLocation,
-                SpawnRotation,
-                SpawnParams
-            );
+        // Attempt to spawn
+        AChessPieceBase* Enemy = GetWorld()->SpawnActor<AChessPieceBase>(
+            EnemyPieceClasses[Index],
+            SpawnLocation,
+            SpawnRotation,
+            SpawnParams
+        );
 
-            if (Enemy)
-            {
-                Enemy->GridX = RandomX;
-                Enemy->GridY = RandomY;
-                /*Enemy->PieceType = static_cast<EPieceType>(FMath::RandRange(1, 3));*/
-                Enemy->PieceType = EnemyTypes[Index];
+        if (Enemy)
+        {
+            Enemy->GridX = RandomX;
+            Enemy->GridY = RandomY;
+            Enemy->PieceType = EnemyTypes.IsValidIndex(Index) ? EnemyTypes[Index] : EPieceType::EnemyRook;
 
-                Tile->OccupyingPiece = Enemy;
-                AllPieces.Add(Enemy);
-                SpawnedCount++;
+            Tile->OccupyingPiece = Enemy;
+            AllPieces.Add(Enemy);
+            SpawnedCount++;
 
-                if (GEngine)
-                {
-                    GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Orange,
-                        FString::Printf(TEXT("Enemy %d spawned at grid (%d, %d), world (%.1f, %.1f)"),
-                            SpawnedCount, RandomX, RandomY, SpawnLocation.X, SpawnLocation.Y));
-                }
-            }
-            else {
-                GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red,
-                    FString::Printf(TEXT("IT'S NOT AN ENEMY")));
-            }
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Green,
+                FString::Printf(TEXT("Successfully spawned %s at grid (%d, %d)"),
+                    *Enemy->GetName(), RandomX, RandomY));
+        }
+        else
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 10.f, FColor::Red,
+                FString::Printf(TEXT("Failed to spawn %s!"), *EnemyPieceClasses[Index]->GetName()));
         }
     }
 
-    if (GEngine)
-    {
-        GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow,
-            FString::Printf(TEXT("Spawned %d enemies"), SpawnedCount));
-    }
+    GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow,
+        FString::Printf(TEXT("Spawned %d enemies after %d attempts"), SpawnedCount, Attempts));
 }
+
 
 void ATurnBasedGameMode::SpawnRandomPowerUps(int32 Count)
 {
