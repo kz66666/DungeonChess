@@ -425,13 +425,13 @@ void AChessPieceBase::AttackPiece(AChessPieceBase* Target)
         {
             // Remove enemy from AllPieces array
             GameMode->AllPieces.Remove(Target);
-			// Check to see if all the enemies are defeated
-            GameMode->CheckWinCondition();
             // Enemy is being destroyed - refresh highlights
             GameMode->RefreshEnemyHighlights();
         }
 
         Target->Destroy();
+        // Check to see if all the enemies are defeated
+        GameMode->CheckWinCondition();
     }
 
     bHasActedThisTurn = true;

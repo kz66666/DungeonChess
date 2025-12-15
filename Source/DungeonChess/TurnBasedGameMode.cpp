@@ -704,32 +704,28 @@ void ATurnBasedGameMode::EndGame(EGameResult Result)
 
     if (EndGameWidgetClass)
     {
-        // Create the widget
         EndGameWidget = CreateWidget<UUserWidget>(PC, EndGameWidgetClass);
         if (EndGameWidget)
         {
-            EndGameWidget->AddToViewport(100); // Always on top
-            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("End Game Widget Added!"));
-
-            // Set the bPlayerWon variable using reflection
-            bool bPlayerWon = (Result == EGameResult::Win);
-
-            // Find the property by name
+            // Directly set the widget's property
             FBoolProperty* PlayerWonProp = FindFProperty<FBoolProperty>(
                 EndGameWidget->GetClass(),
                 FName("bPlayerWon")
             );
-
             if (PlayerWonProp)
             {
-                // Set the property value
-                PlayerWonProp->SetPropertyValue_InContainer(EndGameWidget, bPlayerWon);
+                // Use the expression directly, no local variable
+                PlayerWonProp->SetPropertyValue_InContainer(EndGameWidget, Result == EGameResult::Win);
             }
 
-            // Add to viewport AFTER setting the property
+            // Add to viewport after setting property
             EndGameWidget->AddToViewport(100);
+
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("End Game Widget Added!"));
         }
     }
+
+
 
     if (GEngine)
     {

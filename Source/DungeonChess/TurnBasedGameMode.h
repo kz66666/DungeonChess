@@ -79,6 +79,9 @@ public:
     UPROPERTY(BlueprintReadOnly, Category = "Game State")
     EGameResult GameResult = EGameResult::None;
 
+    UPROPERTY(BlueprintReadWrite, Category = "Game")
+    bool bPlayerWon;
+
     void CheckWinCondition();
     void CheckLoseCondition();
     void EndGame(EGameResult Result);
